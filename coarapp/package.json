@@ -1,0 +1,13 @@
+{
+  "name": "coarapp",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Frontend manejado en proyecto separado'",
+    "build": "echo 'Frontend manejado en proyecto separado'",
+    "preview": "echo 'Frontend manejado en proyecto separado'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
