@@ -1,6 +1,8 @@
 <template>
-    <AppLoader />
-    <router-view />
+    <v-app>
+        <AppLoader />
+        <router-view />
+    </v-app>
 </template>
 
 <script setup lang="ts">
