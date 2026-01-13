@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-const props = defineProps<{
-    open: {
-        type: Boolean;
-        default: false;
-    };
+const props = withDefaults(defineProps<{
+    modelValue?: boolean;
+    open?: boolean;
+
+const props = withDefaults(defineProps<{
+    modelValue?: boolean;
+    open?: boolean;
     title: {
         type: String;
         default: '';
@@ -14,25 +16,39 @@ const props = defineProps<{
         type: String;
         default: 'md'; // sm, md, lg, xl, fullscreen
     };
-    persistent: {
-        type: Boolean;
-        default: false; // Si es true, no se cierra al hacer click fuera
-    };
-    scrollable: {
-        type: Boolean;
-        default: true;
-    };
-}>();
+    persistent?: boolean;
+    scrollable?: boolean;
+}>(), {
+    modelValue: undefined,
+    open: false,
+    title: '',
+    size: 'md',
+    persistent: false,
+    scrollable: true,
+});
 
 const emit = defineEmits<{
     (e: 'close'): void;
     (e: 'update:open', value: boolean): void;
+    (e: 'update:modelValue', value: boolean): void;
 }>();
 
+// Soporte para v-model y prop open (compatibilidad)
+const isOpen = computed(() => {
+    if (props.modelValue !== undefined) {
+        return props.modelValue;
+    }
+    return props.open ?? false;
+});
+
 const dialogModel = computed({
-    get: () => props.open,
+    get: () => isOpen.value,
     set: (value: boolean) => {
-        emit('update:open', value);
+        if (props.modelValue !== undefined) {
+            emit('update:modelValue', value);
+        } else {
+            emit('update:open', value);
+        }
         if (!value) {
             emit('close');
         }

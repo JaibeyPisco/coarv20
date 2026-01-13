@@ -46,9 +46,7 @@ const columns = [
         width: 400,
         minWidth: 320,
         maxWidth: 500,
-        formatter: (cell: string) => {
-            console.log(cell);
-
+        formatter: (cell: any) => {
             const descripcion = cell.getValue() || '';
             if (!descripcion) return '—';
             return `<div style="max-width: 400px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.4;">${descripcion}</div>`;
@@ -164,123 +162,90 @@ onBeforeUnmount(() => {
 <template>
     <AuthenticatedLayout>
         <template #header>
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-center justify-space-between flex-wrap ga-3">
                 <div>
-                    <h1 class="h2 mb-1">Configuración / Áreas</h1>
-                    <p class="text-secondary mb-0">
+                    <h1 class="text-h5 font-weight-bold mb-1">Configuración / Áreas</h1>
+                    <p class="text-body-2 text-medium-emphasis mb-0">
                         Gestiona las áreas de la organización; activa, edita o elimina según
                         necesidad.
                     </p>
                 </div>
-                <div class="btn-group">
-                    <button
-                        type="button"
-                        class="btn btn-primary d-flex align-items-center gap-2 btn-md"
-                        @click="crudModal.openCreateModal"
-                        aria-label="Crear nueva área"
-                    >
-                        <i class="ti ti-plus" aria-hidden="true"></i>
-                        Nuevo
-                    </button>
-                </div>
+                <v-btn
+                    color="primary"
+                    prepend-icon="mdi-plus"
+                    @click="crudModal.openCreateModal"
+                >
+                    Nuevo
+                </v-btn>
             </div>
         </template>
 
-        <div class="">
-            <TableCard
-                :loading="table.loading.value"
-                :column-menu="table.columnMenu.value"
-                :search-value="searchQuery"
-                search-placeholder="Buscar área..."
-                @print="table.printTable"
-                @export="downloadExcel"
-                @toggle-column="toggleColumnVisibility"
-                @update:search="updateSearchValue"
-            >
-                <div ref="tableEl" class="tabulator-wrapper"></div>
+        <TableCard
+            :loading="table.loading.value"
+            :column-menu="table.columnMenu.value"
+            :search-value="searchQuery"
+            search-placeholder="Buscar área..."
+            @print="table.printTable"
+            @export="downloadExcel"
+            @toggle-column="toggleColumnVisibility"
+            @update:search="updateSearchValue"
+        >
+            <div ref="tableEl" class="tabulator-wrapper"></div>
 
-                <template #footer-left>
-                    <span>{{ table.recordSummary.value }}</span>
-                </template>
-                <template #footer-right>
-                    <span>Actualizado automáticamente al guardar cambios.</span>
-                </template>
-            </TableCard>
-        </div>
+            <template #footer-left>
+                <span class="text-caption">{{ table.recordSummary.value }}</span>
+            </template>
+            <template #footer-right>
+                <span class="text-caption text-medium-emphasis">
+                    Actualizado automáticamente al guardar cambios.
+                </span>
+            </template>
+        </TableCard>
 
         <AppModal
             :open="crudModal.showSaveModal.value"
             :title="crudModal.saveModalTitle.value"
-            @close="crudModal.closeSaveModal"
+            @update:open="crudModal.showSaveModal.value = $event"
         >
             <template #body>
-                <form class="space-y-3" @submit.prevent role="form" aria-label="Formulario de área">
-                    <div class="mb-3">
-                        <label class="form-label required" for="area-nombre">
-                            Nombre
-                            <span class="visually-hidden">(campo obligatorio)</span>
-                        </label>
-                        <input
-                            id="area-nombre"
-                            v-model="saveForm.nombre"
-                            type="text"
-                            class="form-control"
-                            maxlength="100"
-                            placeholder="Nombre del área"
-                            aria-required="true"
-                            aria-describedby="area-nombre-help"
-                        />
-                        <small id="area-nombre-help" class="form-text text-muted visually-hidden">
-                            Ingrese el nombre del área (máximo 100 caracteres)
-                        </small>
-                    </div>
-                    <div class="mb-0">
-                        <label class="form-label" for="area-descripcion">Descripción</label>
-                        <textarea
-                            id="area-descripcion"
-                            v-model="saveForm.descripcion"
-                            class="form-control"
-                            rows="3"
-                            maxlength="255"
-                            placeholder="Describe brevemente el área"
-                            aria-describedby="area-descripcion-help"
-                        ></textarea>
-                        <small
-                            id="area-descripcion-help"
-                            class="form-text text-muted visually-hidden"
-                        >
-                            Descripción opcional del área (máximo 255 caracteres)
-                        </small>
-                    </div>
-                </form>
+                <v-form>
+                    <v-text-field
+                        v-model="saveForm.nombre"
+                        label="Nombre"
+                        placeholder="Nombre del área"
+                        :rules="[v => !!v || 'El nombre del área es obligatorio']"
+                        maxlength="100"
+                        counter
+                        required
+                        class="mb-3"
+                    />
+                    <v-textarea
+                        v-model="saveForm.descripcion"
+                        label="Descripción"
+                        placeholder="Describe brevemente el área"
+                        rows="3"
+                        maxlength="255"
+                        counter
+                        auto-grow
+                    />
+                </v-form>
             </template>
             <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button
-                        type="button"
-                        class="btn btn-default btn-sm pull-left"
+                <div class="d-flex justify-space-between w-100">
+                    <v-btn
+                        variant="text"
                         @click="crudModal.closeSaveModal"
-                        aria-label="Cancelar y cerrar modal"
                     >
-                        <i class="fa fa-times" aria-hidden="true"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-primary btn-sm"
+                        Cancelar
+                    </v-btn>
+                    <v-btn
+                        color="primary"
+                        :loading="crudModal.saving.value"
                         :disabled="crudModal.saving.value"
-                        :aria-label="
-                            crudModal.editingId.value ? 'Actualizar área' : 'Guardar nueva área'
-                        "
                         @click="() => crudModal.handleSaveSubmit(saveForm, table.reloadTable)"
                     >
-                        <span
-                            v-if="crudModal.saving.value"
-                            class="spinner-border spinner-border-sm me-2"
-                            role="status"
-                            aria-hidden="true"
-                        ></span>
                         {{ crudModal.editingId.value ? 'Actualizar' : 'Guardar' }}
-                    </button>
+                    </v-btn>
                 </div>
             </template>
         </AppModal>
@@ -289,7 +254,7 @@ onBeforeUnmount(() => {
             :open="crudModal.showDeleteModal.value"
             title="Eliminar área"
             size="sm"
-            @close="crudModal.closeDeleteModal"
+            @update:open="crudModal.showDeleteModal.value = $event"
         >
             <template #body>
                 <p class="mb-0">
@@ -299,30 +264,21 @@ onBeforeUnmount(() => {
                 </p>
             </template>
             <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button
-                        type="button"
-                        class="btn btn-default btn-sm pull-left"
+                <div class="d-flex justify-space-between w-100">
+                    <v-btn
+                        variant="text"
                         @click="crudModal.closeDeleteModal"
-                        aria-label="Cancelar eliminación"
                     >
-                        <i class="fa fa-times" aria-hidden="true"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-danger btn-sm"
+                        Cancelar
+                    </v-btn>
+                    <v-btn
+                        color="error"
+                        :loading="crudModal.deleting.value"
                         :disabled="crudModal.deleting.value"
-                        aria-label="Confirmar eliminación del área"
                         @click="() => crudModal.handleDeleteConfirm(table.reloadTable)"
                     >
-                        <span
-                            v-if="crudModal.deleting.value"
-                            class="spinner-border spinner-border-sm me-2"
-                            role="status"
-                            aria-hidden="true"
-                        ></span>
                         Eliminar
-                    </button>
+                    </v-btn>
                 </div>
             </template>
         </AppModal>

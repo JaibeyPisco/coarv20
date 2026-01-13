@@ -1,6 +1,6 @@
 # 📊 Progreso de Migración a Vuetify
 
-## Estado Actual: 🟢 Fase 2 Completada
+## Estado Actual: 🟢 Fase 3 Completada
 
 **Fecha de inicio**: 2024
 **Rama**: `feature/migrate-to-vuetify`
@@ -104,12 +104,68 @@
 - Mapeo de iconos Tabler → Material Design Icons
 - Helper reutilizable para toda la aplicación
 
+## ✅ Fase 3: Migración de Componentes Base - COMPLETADA
+
+### Tareas Completadas
+
+- [x] **3.1** Migrar `AppModal.vue` → `v-dialog`
+  - Implementado con `v-dialog` nativo de Vuetify
+  - Soporte para tamaños: sm, md, lg, xl, fullscreen
+  - Props `persistent` y `scrollable`
+  - Compatible con API anterior (props `open` y evento `close`)
+  - Eliminados estilos personalizados, usa estilos de Vuetify
+  
+- [x] **3.2** Migrar `TableCard.vue` a componentes Vuetify
+  - Reescrito usando `v-card`, `v-card-title`, `v-card-text`, `v-card-actions`
+  - Toolbar con `v-btn` para acciones (imprimir, exportar)
+  - Menú de columnas con `v-menu` y `v-list`
+  - Búsqueda con `v-text-field` y prepend-icon
+  - Overlay de carga con `v-overlay` y `v-progress-circular`
+  - Eliminadas clases de Tabler
+  
+- [x] **3.3** Actualizar sistema de notificaciones a `v-snackbar`
+  - Nuevo store `notifications.ts` con Pinia
+  - Componente `AppNotifications.vue` global
+  - Mantiene compatibilidad con API anterior (`notificacion()`)
+  - Métodos helper: `success()`, `error()`, `warning()`, `info()`
+  - Auto-remoción después de duración configurable
+  - Iconos según tipo de notificación
+  - Agregado a `App.vue` para funcionamiento global
+
+### Cambios Realizados
+
+#### `src/components/Partial/AppModal.vue`
+- Reescrito completamente usando `v-dialog`
+- Eliminados ~290 líneas de estilos personalizados
+- API simplificada pero compatible
+
+#### `src/components/Table/TableCard.vue`
+- Migrado a componentes Vuetify
+- Toolbar y búsqueda mejorados
+- Overlay de carga más elegante
+
+#### `src/stores/notifications.ts` (NUEVO)
+- Store de Pinia para gestión de notificaciones
+- Cola de notificaciones
+- Métodos helper por tipo
+
+#### `src/components/AppNotifications.vue` (NUEVO)
+- Componente global para mostrar notificaciones
+- Usa `v-snackbar` de Vuetify
+- Integrado en `App.vue`
+
+#### `src/utils/notificacion.ts`
+- Actualizado para usar nuevo store
+- Mantiene compatibilidad con código existente
+- Mapea 'danger' → 'error' para Vuetify
+
 ### Próximos Pasos
 
-**Fase 3**: Migración de Componentes Base
-- [ ] Migrar `AppModal.vue` → `v-dialog`
-- [ ] Migrar `TableCard.vue` a componentes Vuetify
-- [ ] Actualizar sistema de notificaciones a `v-snackbar`
+**Fase 4**: Migración de Vistas CRUD
+- [ ] Migrar vistas de Configuración (14 vistas)
+- [ ] Migrar vistas de Operación
+- [ ] Migrar vistas de Reportes
+- [ ] Migrar Dashboard y otras vistas
 
 ---
 
