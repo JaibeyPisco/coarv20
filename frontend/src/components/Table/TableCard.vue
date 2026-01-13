@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { mapTablerIconToMDI } from '@/utils/iconMapper';
+
 const props = defineProps<{
     loading?: boolean;
     columnMenu?: Array<{ title: string; field: string; visible: boolean }>;
@@ -13,9 +15,8 @@ const emit = defineEmits<{
     (e: 'update:search', value: string): void;
 }>();
 
-function handleSearchInput(event: Event) {
-    const target = event.target as HTMLInputElement;
-    emit('update:search', target.value);
+function handleSearchInput(value: string) {
+    emit('update:search', value);
 }
 
 function handleToggleColumn(field: string) {
@@ -24,100 +25,93 @@ function handleToggleColumn(field: string) {
 </script>
 
 <template>
-    <div class="card table-card">
-        <div class="table-card__header card-header py-2 px-3">
-            <div class="table-card__toolbar d-flex flex-wrap align-items-center gap-2 w-100">
-                <div class="table-card__actions d-flex flex-wrap align-items-center gap-2">
+    <v-card class="table-card" elevation="1">
+        <v-card-title class="py-2 px-3">
+            <div class="d-flex flex-wrap align-center justify-space-between w-100 ga-2">
+                <div class="d-flex flex-wrap align-center ga-2">
                     <slot name="actions">
-                        <div class="btn-toolbar gap-2 flex-wrap">
-                            <button
-                                type="button"
-                                class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 px-3"
-                                @click="emit('print')"
-                                aria-label="Imprimir tabla"
-                            >
-                                <i class="ti ti-printer fs-5" aria-hidden="true"></i>
-                                Imprimir
-                            </button>
-                            <button
-                                type="button"
-                                class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 px-3"
-                                @click="emit('export')"
-                                aria-label="Exportar tabla a Excel"
-                            >
-                                <i class="ti ti-file-spreadsheet fs-5" aria-hidden="true"></i>
-                                Excel
-                            </button>
-                            <div v-if="props.columnMenu?.length" class="dropdown">
-                                <button
-                                    class="btn btn-outline-secondary btn-sm dropdown-toggle px-3"
-                                    data-bs-toggle="dropdown"
-                                    aria-label="Mostrar u ocultar columnas"
-                                    aria-haspopup="true"
-                                    aria-expanded="false"
+                        <v-btn
+                            variant="outlined"
+                            size="small"
+                            prepend-icon="mdi-printer"
+                            @click="emit('print')"
+                        >
+                            Imprimir
+                        </v-btn>
+                        <v-btn
+                            variant="outlined"
+                            size="small"
+                            prepend-icon="mdi-file-excel"
+                            @click="emit('export')"
+                        >
+                            Excel
+                        </v-btn>
+                        <v-menu v-if="props.columnMenu && props.columnMenu.length > 0">
+                            <template #activator="{ props: menuProps }">
+                                <v-btn
+                                    v-bind="menuProps"
+                                    variant="outlined"
+                                    size="small"
+                                    prepend-icon="mdi-eye"
                                 >
                                     Mostrar columnas
-                                </button>
-                                <div class="dropdown-menu shadow-sm py-2" role="menu">
-                                    <template v-for="column in props.columnMenu" :key="column.field">
-                                        <button
-                                            class="dropdown-item d-flex justify-content-between align-items-center py-1"
-                                            type="button"
-                                            role="menuitemcheckbox"
-                                            :aria-checked="column.visible"
-                                            @click="handleToggleColumn(column.field)"
-                                        >
-                                            <span>{{ column.title }}</span>
-                                            <i 
-                                                :class="['ti', column.visible ? 'ti-eye' : 'ti-eye-off']"
-                                                aria-hidden="true"
-                                            ></i>
-                                        </button>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
+                                </v-btn>
+                            </template>
+                            <v-list>
+                                <v-list-item
+                                    v-for="column in props.columnMenu"
+                                    :key="column.field"
+                                    :prepend-icon="column.visible ? 'mdi-eye' : 'mdi-eye-off'"
+                                    :title="column.title"
+                                    @click="handleToggleColumn(column.field)"
+                                />
+                            </v-list>
+                        </v-menu>
                     </slot>
                 </div>
-                <div class="table-card__search d-flex align-items-center ms-lg-auto">
+                <div class="d-flex align-center ms-lg-auto">
                     <slot name="search">
-                        <div class="input-icon">
-                            <span class="input-icon-addon" aria-hidden="true">
-                                <i class="ti ti-search" aria-hidden="true"></i>
-                            </span>
-                            <input
-                                :value="props.searchValue ?? ''"
-                                type="search"
-                                class="form-control form-control-sm"
-                                :placeholder="props.searchPlaceholder ?? 'Buscar...'"
-                                aria-label="Buscar en la tabla"
-                                @input="handleSearchInput"
-                            />
-                        </div>
+                        <v-text-field
+                            :model-value="props.searchValue ?? ''"
+                            :placeholder="props.searchPlaceholder ?? 'Buscar...'"
+                            prepend-inner-icon="mdi-magnify"
+                            variant="outlined"
+                            density="compact"
+                            hide-details
+                            single-line
+                            @update:model-value="handleSearchInput"
+                        />
                     </slot>
                 </div>
             </div>
-        </div>
+        </v-card-title>
 
-        <div class="table-card__body card-body pt-3 pb-2 px-3">
+        <v-divider />
+
+        <v-card-text class="pt-3 pb-2 px-3">
             <slot name="flash" />
             <div class="position-relative table-card__container">
                 <slot />
-                <div
+                <v-overlay
                     v-if="props.loading"
-                    class="table-card__overlay d-flex align-items-center justify-content-center"
-                    role="status"
-                    aria-live="polite"
-                    aria-label="Cargando datos"
+                    :model-value="props.loading"
+                    contained
+                    class="align-center justify-center"
+                    scrim="rgba(255, 255, 255, 0.7)"
                 >
-                    <div class="spinner-border text-primary" role="status" aria-hidden="true" />
-                    <span class="visually-hidden">Cargando datos de la tabla...</span>
-                </div>
+                    <v-progress-circular
+                        indeterminate
+                        color="primary"
+                        size="64"
+                    />
+                </v-overlay>
             </div>
-        </div>
+        </v-card-text>
 
-        <div class="table-card__footer card-footer py-2 px-3 small">
-            <div class="table-card__footer-content d-flex flex-wrap justify-content-between w-100">
+        <v-divider />
+
+        <v-card-actions class="py-2 px-3">
+            <div class="d-flex flex-wrap justify-space-between w-100">
                 <div class="table-card__footer-left">
                     <slot name="footer-left" />
                 </div>
@@ -125,8 +119,12 @@ function handleToggleColumn(field: string) {
                     <slot name="footer-right" />
                 </div>
             </div>
-        </div>
-    </div>
+        </v-card-actions>
+    </v-card>
 </template>
 
-
+<style scoped>
+.table-card__container {
+    min-height: 240px;
+}
+</style>

@@ -1,6 +1,7 @@
 <template>
     <v-app>
         <AppLoader />
+        <AppNotifications />
         <router-view />
     </v-app>
 </template>
@@ -9,6 +10,7 @@
 import { onMounted } from 'vue';
 import { useAuthStore } from './stores/auth';
 import AppLoader from './components/AppLoader.vue';
+import AppNotifications from './components/AppNotifications.vue';
 
 const authStore = useAuthStore();
 

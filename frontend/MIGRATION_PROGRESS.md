@@ -1,6 +1,6 @@
 # 📊 Progreso de Migración a Vuetify
 
-## Estado Actual: 🟢 Fase 1 Completada
+## Estado Actual: 🟢 Fase 2 Completada
 
 **Fecha de inicio**: 2024
 **Rama**: `feature/migrate-to-vuetify`
@@ -49,13 +49,67 @@
 #### `src/App.vue`
 - Envuelto con `<v-app>` para estructura correcta de Vuetify
 
+## ✅ Fase 2: Migración de Layouts - COMPLETADA
+
+### Tareas Completadas
+
+- [x] **2.1** Migrar `AppSidebar.vue` → `v-navigation-drawer`
+  - Implementado con `v-list` y `v-list-group` para menús expandibles
+  - Integrado sistema de permisos existente
+  - Mapeo de iconos Tabler a Material Design Icons
+  - Responsive con drawer temporal en móvil
+  
+- [x] **2.2** Migrar `AppTopbar.vue` → `v-app-bar`
+  - Implementado con `v-app-bar` y `v-menu` para menú de usuario
+  - Integrado sistema de temas de Vuetify (`useTheme`)
+  - Botón de toggle de tema dark/light
+  - Avatar de usuario con menú dropdown
+  
+- [x] **2.3** Migrar `AuthenticatedLayout.vue`
+  - Integrado AppSidebar y AppTopbar migrados
+  - Eliminada dependencia de `useTablerAssets`
+  - Estructura adaptada a `v-app` de Vuetify
+  - Loader de autenticación migrado a componentes Vuetify
+  
+- [x] **2.4** Migrar `GuestLayout.vue`
+  - Convertido a `v-container` y `v-card` de Vuetify
+  - Eliminadas clases de Tailwind
+  
+- [x] **2.5** Crear `iconMapper.ts`
+  - Helper para mapear iconos Tabler a Material Design Icons
+  - Facilita migración gradual de iconos
+
+### Cambios Realizados
+
+#### `src/components/Layouts/Partial/AppSidebar.vue`
+- Reescrito completamente usando `v-navigation-drawer`
+- Manejo automático de grupos expandibles
+- Integración con sistema de permisos
+
+#### `src/components/Layouts/Partial/AppTopbar.vue`
+- Reescrito usando `v-app-bar`
+- Sistema de temas migrado a `useTheme` de Vuetify
+- Menú de usuario con `v-menu`
+
+#### `src/components/Layouts/AuthenticatedLayout.vue`
+- Eliminada dependencia de Tabler
+- Estructura adaptada a Vuetify
+- Loader migrado a `v-progress-circular`
+
+#### `src/components/Layouts/GuestLayout.vue`
+- Migrado a componentes Vuetify
+- Eliminadas clases Tailwind
+
+#### `src/utils/iconMapper.ts` (NUEVO)
+- Mapeo de iconos Tabler → Material Design Icons
+- Helper reutilizable para toda la aplicación
+
 ### Próximos Pasos
 
-**Fase 2**: Migración de Layouts
-- [ ] Migrar `AuthenticatedLayout.vue`
-- [ ] Migrar `AppSidebar.vue` → `v-navigation-drawer`
-- [ ] Migrar `AppTopbar.vue` → `v-app-bar`
-- [ ] Migrar `GuestLayout.vue`
+**Fase 3**: Migración de Componentes Base
+- [ ] Migrar `AppModal.vue` → `v-dialog`
+- [ ] Migrar `TableCard.vue` a componentes Vuetify
+- [ ] Actualizar sistema de notificaciones a `v-snackbar`
 
 ---
 
