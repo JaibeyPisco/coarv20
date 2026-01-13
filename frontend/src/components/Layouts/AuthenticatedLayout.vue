@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import ApplicationLogo from '../ApplicationLogo.vue';
 import AppSidebar from './Partial/AppSidebar.vue';
 import AppTopbar from './Partial/AppTopbar.vue';
-import { useTablerAssets } from '../../composables/useTablerAssets';
 import { useMenuPermissions } from '../../composables/useMenuPermissions';
 import { useAuthReady } from '../../composables/useAuthReady';
 
@@ -15,8 +14,7 @@ const authStore = useAuthStore();
 // Esperar a que la autenticación esté lista antes de renderizar el contenido
 const { isReady } = useAuthReady();
 
-const { headLinks } = useTablerAssets({ cleanup: false });
-
+const drawer = ref(false);
 const user = computed(() => authStore.user);
 const { filtrarItemsMenu } = useMenuPermissions(user);
 
@@ -27,20 +25,17 @@ const allSidebarItems = computed(() => [
         href: '/dashboard',
         icon: 'ti ti-dashboard',
         active: route.name === 'dashboard',
-        // Dashboard no requiere permiso específico
     },
     {
         label: 'Perfil',
         href: '/profile',
         icon: 'ti ti-user',
         active: route.name === 'profile',
-        // Perfil no requiere permiso específico
     },
     {
         label: 'Configuración',
         icon: 'ti ti-settings',
         active: route.path.startsWith('/configuracion'),
-        // No definir menu aquí, se mostrará si tiene al menos un child visible
         children: [
             {
                 label: 'Empresa',
@@ -172,91 +167,77 @@ const company = computed(
         }
 );
 
-// Mantener el nombre completo, solo se reducirá el tamaño visual
 const companyDisplayName = computed(() => {
     const empresa = company.value;
     if (!empresa) return 'COAR';
-
-    // Preferir razón social, sino nombre comercial
     return empresa.razon_social || empresa.nombre_comercial || 'COAR';
 });
 </script>
 
 <template>
-    <div class="page">
-        <template v-for="link in headLinks" :key="link.key">
-            <link v-bind="link" />
-        </template>
+    <!-- Mostrar loader mientras se verifica la autenticación -->
+    <v-container v-if="!isReady" fluid class="fill-height">
+        <v-row align="center" justify="center">
+            <v-col cols="12" sm="8" md="6" lg="4">
+                <v-card>
+                    <v-card-text class="text-center py-8">
+                        <v-progress-circular
+                            indeterminate
+                            color="primary"
+                            size="64"
+                        />
+                        <p class="mt-4 mb-0 text-body-2 text-medium-emphasis">
+                            Verificando autenticación...
+                        </p>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+        </v-row>
+    </v-container>
 
-        <!-- Mostrar loader mientras se verifica la autenticación -->
-        <div v-if="!isReady" class="page-body">
-            <div class="container-xl">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body text-center py-5">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Cargando...</span>
-                                </div>
-                                <p class="mt-3 mb-0 text-muted">Verificando autenticación...</p>
-                            </div>
-                        </div>
-                    </div>
+    <!-- Contenido principal solo se muestra cuando la autenticación está lista -->
+    <template v-else>
+        <AppSidebar :items="sidebarItems" v-model:drawer="drawer">
+            <template #brand>
+                <router-link
+                    to="/dashboard"
+                    class="text-decoration-none d-flex align-center justify-center pa-2"
+                >
+                    <v-avatar v-if="company.logo_url" size="40">
+                        <v-img :src="company.logo_url" alt="Logo empresa" />
+                    </v-avatar>
+                    <ApplicationLogo
+                        v-else
+                        style="width: 40px; height: 40px"
+                    />
+                </router-link>
+            </template>
+        </AppSidebar>
+
+        <AppTopbar
+            :nav="topNavItems"
+            :user="(user as any) || {}"
+            :user-menu="userMenu"
+            :drawer="drawer"
+            @update:drawer="drawer = $event"
+        >
+            <template #brand>
+                <div class="d-flex align-center">
+                    <span class="text-body-2 font-weight-semibold">
+                        {{ companyDisplayName }}
+                    </span>
                 </div>
-            </div>
-        </div>
+            </template>
+        </AppTopbar>
 
-        <!-- Contenido principal solo se muestra cuando la autenticación está lista -->
-        <template v-else>
-            <AppSidebar :items="sidebarItems">
-                <template #brand>
-                    <router-link
-                        to="/dashboard"
-                        class="navbar-brand d-flex align-items-center justify-content-center"
-                    >
-                        <div
-                            class="navbar-brand-image d-flex align-items-center justify-content-center"
-                        >
-                            <img
-                                v-if="company.logo_url"
-                                :src="company.logo_url"
-                                alt="Logo empresa"
-                                class="img-fluid"
-                                style="max-height: 40px"
-                            />
-                            <ApplicationLogo
-                                v-else
-                                class="icon"
-                                style="width: 40px; height: 40px"
-                            />
-                        </div>
-                    </router-link>
-                </template>
-            </AppSidebar>
+        <v-main>
+            <v-container v-if="$slots.header" fluid class="pa-4">
+                <slot name="header" />
+            </v-container>
 
-            <div class="page-wrapper">
-                <AppTopbar :nav="topNavItems" :user="(user as any) || {}" :user-menu="userMenu">
-                    <template #brand>
-                        <div class="d-flex align-items-center">
-                            <div class="fw-semibold" style="font-size: 0.875rem">
-                                {{ companyDisplayName }}
-                            </div>
-                        </div>
-                    </template>
-                </AppTopbar>
-
-                <div v-if="$slots.header" class="page-header d-print-none">
-                    <div class="container-xl">
-                        <slot name="header" />
-                    </div>
-                </div>
-
-                <main class="page-body">
-                    <div class="container-xl">
-                        <slot />
-                    </div>
-                </main>
-            </div>
-        </template>
-    </div>
+            <v-container fluid>
+                <slot />
+            </v-container>
+        </v-main>
+    </template>
 </template>

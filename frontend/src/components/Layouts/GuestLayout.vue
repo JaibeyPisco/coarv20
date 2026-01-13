@@ -4,20 +4,24 @@ import { RouterLink } from 'vue-router';
 </script>
 
 <template>
-    <div
-        class="flex min-h-screen flex-col items-center bg-gray-100 pt-6 sm:justify-center sm:pt-0"
-    >
-        <div>
-            <RouterLink to="/">
-                <ApplicationLogo class="h-20 w-20 fill-current text-gray-500" />
-            </RouterLink>
-        </div>
+    <v-container fluid class="fill-height">
+        <v-row align="center" justify="center" class="fill-height">
+            <v-col cols="12" sm="8" md="6" lg="4">
+                <div class="text-center mb-6">
+                    <RouterLink to="/" class="text-decoration-none">
+                        <ApplicationLogo
+                            class="mx-auto"
+                            style="width: 80px; height: 80px"
+                        />
+                    </RouterLink>
+                </div>
 
-        <div
-            class="mt-6 w-full overflow-hidden bg-white px-6 py-4 shadow-md sm:max-w-md sm:rounded-lg"
-        >
-            <slot />
-        </div>
-    </div>
+                <v-card elevation="2">
+                    <v-card-text class="pa-6">
+                        <slot />
+                    </v-card-text>
+                </v-card>
+            </v-col>
+        </v-row>
+    </v-container>
 </template>
-
