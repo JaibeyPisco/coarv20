@@ -211,14 +211,6 @@ function handleActionCellClick(e: MouseEvent, cell: any) {
     }
 }
 
-async function reloadTable() {
-    if (!table.value) return;
-    loading.value = true;
-    await table.value.replaceData('configuracion/lugares');
-    applySearch(searchQuery.value);
-    updateRecordSummary();
-}
-
 function applySearch(query: string) {
     const normalized = query.trim().toLowerCase();
     if (!table.value) return;
@@ -227,11 +219,19 @@ function applySearch(query: string) {
         table.value.clearFilter(true);
     } else {
         table.value.setFilter((rowData: Lugar) => {
-            const values = [rowData.nombre, rowData.referencia ?? ''];
-            return values.some((value) => value?.toLowerCase().includes(normalized));
+            const nombre = rowData.nombre?.toLowerCase() || '';
+            const referencia = rowData.referencia?.toLowerCase() || '';
+            return nombre.includes(normalized) || referencia.includes(normalized);
         });
     }
 
+    updateRecordSummary();
+}
+
+async function reloadTable() {
+    if (!table.value) return;
+    loading.value = true;
+    await table.value.replaceData('configuracion/lugares');
     updateRecordSummary();
 }
 
@@ -359,7 +359,6 @@ onMounted(async () => {
     // @ts-ignore expose for Tabulator download module
     (window as any).XLSX = XLSX;
     await initializeTable();
-    // No llamar reloadTable() aquí - la tabla ya carga datos automáticamente con ajaxURL
     document.addEventListener('click', handleGlobalClick);
 });
 
@@ -376,93 +375,89 @@ onBeforeUnmount(() => {
 <template>
     <AuthenticatedLayout>
         <template #header>
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-center justify-space-between flex-wrap ga-3">
                 <div>
-                    <h1 class="h2 mb-1">Configuración / Lugares</h1>
-                    <p class="text-secondary mb-0">
+                    <h1 class="text-h5 font-weight-bold mb-1">Configuración / Lugares</h1>
+                    <p class="text-body-2 text-medium-emphasis mb-0">
                         Administra los lugares disponibles; crea, edita o elimina según necesidad.
                     </p>
                 </div>
-                <div class="btn-group">
-                    <button
-                        type="button"
-                        class="btn btn-primary d-flex align-items-center gap-2"
-                        @click="openCreateModal"
-                    >
-                        <i class="ti ti-plus"></i>
-                        Nuevo
-                    </button>
-                </div>
+                <v-btn
+                    color="primary"
+                    prepend-icon="mdi-plus"
+                    @click="openCreateModal"
+                >
+                    Nuevo
+                </v-btn>
             </div>
         </template>
 
-        <div class="lugares-page">
-            <TableCard
-                :loading="loading"
-                :column-menu="columnMenu"
-                :search-value="searchQuery"
-                search-placeholder="Buscar lugar..."
-                @print="printTable"
-                @export="downloadExcel"
-                @toggle-column="toggleColumnVisibility"
-                @update:search="updateSearchValue"
-            >
-                <div ref="tableEl" class="tabulator-wrapper"></div>
+        <TableCard
+            :loading="loading"
+            :column-menu="columnMenu"
+            :search-value="searchQuery"
+            search-placeholder="Buscar lugar..."
+            @print="printTable"
+            @export="downloadExcel"
+            @toggle-column="toggleColumnVisibility"
+            @update:search="updateSearchValue"
+        >
+            <div ref="tableEl" class="tabulator-wrapper"></div>
 
-                <template #footer-left>
-                    <span>{{ recordSummary }}</span>
-                </template>
-                <template #footer-right>
-                    <span>Actualizado automáticamente al guardar cambios.</span>
-                </template>
-            </TableCard>
-        </div>
+            <template #footer-left>
+                <span class="text-caption">{{ recordSummary }}</span>
+            </template>
+            <template #footer-right>
+                <span class="text-caption text-medium-emphasis">
+                    Actualizado automáticamente al guardar cambios.
+                </span>
+            </template>
+        </TableCard>
 
         <AppModal
             :open="showSaveModal"
             :title="saveModalTitle"
-            @close="closeSaveModal"
+            @update:open="showSaveModal = $event"
         >
             <template #body>
-                <form class="space-y-3" @submit.prevent>
-                    <div class="mb-3">
-                        <label class="form-label required" for="lugar-nombre">Nombre</label>
-                        <input
-                            id="lugar-nombre"
-                            v-model="saveForm.nombre"
-                            type="text"
-                            class="form-control"
-                            maxlength="100"
-                            placeholder="Nombre del lugar"
-                        />
-                    </div>
-                    <div class="mb-0">
-                        <label class="form-label" for="lugar-referencia">Referencia</label>
-                        <textarea
-                            id="lugar-referencia"
-                            v-model="saveForm.referencia"
-                            class="form-control"
-                            rows="3"
-                            maxlength="255"
-                            placeholder="Describe brevemente el lugar"
-                        ></textarea>
-                    </div>
-                </form>
+                <v-form>
+                    <v-text-field
+                        v-model="saveForm.nombre"
+                        label="Nombre"
+                        placeholder="Nombre del lugar"
+                        :rules="[v => !!v || 'El nombre del lugar es obligatorio']"
+                        maxlength="100"
+                        counter
+                        required
+                        class="mb-3"
+                    />
+                    <v-textarea
+                        v-model="saveForm.referencia"
+                        label="Referencia"
+                        placeholder="Describe brevemente el lugar"
+                        rows="3"
+                        maxlength="255"
+                        counter
+                        auto-grow
+                    />
+                </v-form>
             </template>
             <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button type="button" class="btn btn-default btn-sm pull-left" @click="closeSaveModal">
-                        <i class="fa fa-times"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-primary btn-sm"
+                <div class="d-flex justify-space-between w-100">
+                    <v-btn
+                        variant="text"
+                        @click="closeSaveModal"
+                    >
+                        Cancelar
+                    </v-btn>
+                    <v-btn
+                        color="primary"
+                        :loading="saving"
                         :disabled="saving"
                         @click="handleSaveSubmit"
                     >
-                        <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
                         {{ editingId ? 'Actualizar' : 'Guardar' }}
-                    </button>
+                    </v-btn>
                 </div>
             </template>
         </AppModal>
@@ -471,7 +466,7 @@ onBeforeUnmount(() => {
             :open="showDeleteModal"
             title="Eliminar lugar"
             size="sm"
-            @close="closeDeleteModal"
+            @update:open="showDeleteModal = $event"
         >
             <template #body>
                 <p class="mb-0">
@@ -480,19 +475,21 @@ onBeforeUnmount(() => {
                 </p>
             </template>
             <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button type="button" class="btn btn-default btn-sm pull-left" @click="closeDeleteModal">
-                        <i class="fa fa-times"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-danger btn-sm"
+                <div class="d-flex justify-space-between w-100">
+                    <v-btn
+                        variant="text"
+                        @click="closeDeleteModal"
+                    >
+                        Cancelar
+                    </v-btn>
+                    <v-btn
+                        color="error"
+                        :loading="deleting"
                         :disabled="deleting"
                         @click="handleDeleteConfirm"
                     >
-                        <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
                         Eliminar
-                    </button>
+                    </v-btn>
                 </div>
             </template>
         </AppModal>
