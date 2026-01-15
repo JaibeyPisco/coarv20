@@ -1,48 +1,26 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/components/Layouts/AuthenticatedLayout.vue';
-import { ref, reactive, computed, onMounted, onBeforeUnmount, onActivated, watch, nextTick } from 'vue';
-import apiClient from '@/api/axios';
-// @ts-expect-error -- tabulator-tables no proporciona tipos ES module
-import { TabulatorFull as Tabulator } from 'tabulator-tables';
+import { ref, reactive, computed, onMounted, onActivated, watch, nextTick } from 'vue';
 import * as XLSX from 'xlsx';
 import type { Usuario } from '@/types/configuracion';
 import AppModal from '@/components/Partial/AppModal.vue';
-import TableCard from '@/components/Table/TableCard.vue';
+import VDataTableCard from '@/components/Table/VDataTableCard.vue';
 import { notificacion } from '@/utils/notificacion';
 import { useImageUpload } from '@/composables/useImageUpload';
-
-const tableEl = ref<HTMLElement | null>(null);
-const table = ref<any | null>(null);
-const usuarios = ref<Usuario[]>([]);
-const loading = ref(false);
-const searchQuery = ref('');
-const columnMenu = ref<{ title: string; field: string; visible: boolean }[]>([]);
-const recordSummary = ref('Mostrando 0 registros');
+import { useVuetifyTable } from '@/composables/useVuetifyTable';
+import apiClient from '@/api/axios';
 
 // Selects para dropdowns
 const personal = ref<{ id: number; text: string }[]>([]);
 const roles = ref<{ id: number; text: string }[]>([]);
 
-// Para búsqueda de estudiantes (similar a Select2 AJAX)
+// Para búsqueda de estudiantes (v-autocomplete)
 const estudianteSearchQuery = ref('');
 const estudiantesOptions = ref<{ id: number; text: string }[]>([]);
 const estudianteSearchLoading = ref(false);
-const estudianteDropdownOpen = ref(false);
-const estudianteSearchTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+const estudianteSelected = ref<{ id: number; text: string } | null>(null);
 
-function closeAllActionDropdowns() {
-    document.querySelectorAll('.tabulator .actions-menu__dropdown.show').forEach((menu) => {
-        menu.classList.remove('show');
-    });
-}
-
-function handleGlobalClick(e: MouseEvent) {
-    const target = e.target as HTMLElement;
-    if (!target.closest('.tabulator .btn-group')) {
-        closeAllActionDropdowns();
-    }
-}
-
+// Form
 const saveForm = reactive({
     tipo_persona: 'STANDARD',
     id_personal: '',
@@ -56,7 +34,7 @@ const saveForm = reactive({
     fl_ver_informacion_privada: false,
 });
 
-const imagenUpload = useImageUpload();
+const imagenUpload = useImageUpload('/images/sin_imagen.jpg');
 const showSaveModal = ref(false);
 const showDeleteModal = ref(false);
 const showChangePasswordModal = ref(false);
@@ -81,98 +59,70 @@ const showEstudianteSelect = computed(() => saveForm.tipo_persona === 'ESTUDIANT
 const showNombreApellido = computed(() => saveForm.tipo_persona === 'STANDARD' || !saveForm.tipo_persona);
 const showRolSelect = computed(() => saveForm.tipo_persona !== 'ESTUDIANTE');
 
-const columns = [
+// Headers de la tabla
+const headers = [
     {
         title: 'ACCIONES',
-        field: '_actions',
-        width: 150,
-        headerHozAlign: 'center',
-        hozAlign: 'center',
-        resizable: false,
-        headerSort: false,
-        formatter: (cell: any) => {
-            const row = cell.getRow().getData() as Usuario;
-            const suspendAction = row.fl_suspendido
-                ? '<button type="button" class="dropdown-item text-success" data-action="activate"><i class="ti ti-play me-2"></i> Activar</button>'
-                : '<button type="button" class="dropdown-item text-warning" data-action="suspend"><i class="ti ti-pause me-2"></i> Suspender</button>';
-            return `
-                <div class="btn-group actions-menu" style="position: relative;">
-                    <button class="btn btn-sm btn-primary" type="button" data-action="edit">Editar</button>
-                    <button class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split actions-menu__toggle" type="button" data-action="toggle-menu">
-                        <span class="visually-hidden">Toggle Dropdown</span>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-start actions-menu__dropdown" style="position: absolute; left: 0; top: 100%; margin-top: 0.125rem; min-width: 180px; z-index: 1000;">
-                        <button type="button" class="dropdown-item" data-action="change-password"><i class="ti ti-lock me-2"></i> Cambiar Contraseña</button>
-                        ${suspendAction}
-                        <button type="button" class="dropdown-item text-danger" data-action="delete"><i class="ti ti-trash me-2"></i> Eliminar</button>
-                    </div>
-                </div>
-            `;
-        },
-        cellClick: handleActionCellClick,
+        key: 'actions',
+        sortable: false,
+        width: '150px',
     },
     {
         title: 'ESTADO',
-        field: 'fl_suspendido',
-        width: 120,
-        headerHozAlign: 'center',
-        hozAlign: 'center',
-        formatter: (cell: any) => {
-            const value = cell.getValue();
-            if (value) {
-                return '<span class="badge rounded-pill px-3 bg-warning text-dark fw-semibold">SUSPENDIDO</span>';
-            }
-            return '<span class="badge rounded-pill px-3 bg-green-lt text-green fw-semibold">ACTIVO</span>';
-        },
+        key: 'fl_suspendido',
+        sortable: true,
+        align: 'center' as const,
+        width: '120px',
     },
     {
         title: 'NOMBRE',
-        field: 'nombre',
-        minWidth: 150,
-        headerSort: true,
-        formatter: 'plaintext',
+        key: 'nombre',
+        sortable: true,
     },
     {
         title: 'APELLIDO',
-        field: 'apellido',
-        minWidth: 150,
-        headerSort: true,
-        formatter: 'plaintext',
+        key: 'apellido',
+        sortable: true,
     },
     {
         title: 'USUARIO',
-        field: 'usuario',
-        minWidth: 120,
-        headerSort: true,
-        formatter: 'plaintext',
+        key: 'usuario',
+        sortable: true,
+        width: '150px',
     },
     {
         title: 'EMAIL',
-        field: 'email',
-        minWidth: 200,
-        headerSort: true,
-        formatter: 'plaintext',
+        key: 'email',
+        sortable: true,
     },
     {
         title: 'TIPO PERSONA',
-        field: 'tipo_persona',
-        width: 120,
-        headerHozAlign: 'center',
-        hozAlign: 'center',
-        formatter: (cell: any) => {
-            const value = cell.getValue() || 'STANDARD';
-            return `<span class="badge rounded-pill px-3 bg-blue-lt text-blue fw-semibold">${value}</span>`;
-        },
+        key: 'tipo_persona',
+        sortable: true,
+        align: 'center' as const,
+        width: '150px',
     },
     {
         title: 'ROL',
-        field: 'rol',
-        width: 180,
-        headerSort: true,
-        formatter: 'plaintext',
+        key: 'rol',
+        sortable: true,
+        width: '180px',
     },
 ];
 
+// Composable de tabla
+const table = useVuetifyTable<Usuario>({
+    apiURL: '/configuracion/usuario',
+    searchFields: ['nombre', 'apellido', 'usuario', 'email'],
+    serverSidePagination: false,
+    serverSideSorting: false,
+    serverSideSearch: false,
+});
+
+// Inicializar menú de columnas
+table.updateColumnMenu(headers);
+
+// Funciones para selects
 async function loadSelects() {
     try {
         const [personalRes, rolesRes] = await Promise.all([
@@ -198,23 +148,20 @@ async function loadSelects() {
     }
 }
 
-// Función para buscar estudiantes (similar a Select2 AJAX)
+// Función para buscar estudiantes (v-autocomplete)
 async function searchEstudiantes(searchTerm: string) {
-    if (searchTerm.length < 3) {
+    if (!searchTerm || searchTerm.length < 3) {
         estudiantesOptions.value = [];
-        estudianteDropdownOpen.value = false;
-        return;
+        return [];
     }
 
     estudianteSearchLoading.value = true;
-    estudianteDropdownOpen.value = true;
 
     try {
         const response = await apiClient.get('/configuracion/estudiante/getSelect', {
             params: { buscar: searchTerm },
         });
 
-        // La respuesta puede venir en diferentes formatos
         const data = Array.isArray(response.data) 
             ? response.data 
             : (Array.isArray(response.data?.data) ? response.data.data : []);
@@ -223,177 +170,42 @@ async function searchEstudiantes(searchTerm: string) {
             id: item.id ?? item.value,
             text: item.text ?? item.label ?? `${item.nombre ?? ''} ${item.apellido ?? ''} ${item.dni ?? ''}`.trim(),
         }));
+
+        return estudiantesOptions.value;
     } catch (error: any) {
         console.error('Error buscando estudiantes:', error);
         estudiantesOptions.value = [];
-        notificacion('Error al buscar estudiantes.', { type: 'danger', title: 'Error' });
+        return [];
     } finally {
         estudianteSearchLoading.value = false;
     }
 }
 
-function selectEstudiante(estudiante: { id: number; text: string }) {
-    saveForm.id_estudiante = String(estudiante.id);
-    estudianteSearchQuery.value = estudiante.text;
-    estudiantesOptions.value = [];
-    estudianteDropdownOpen.value = false;
-}
-
 function clearEstudiante() {
     saveForm.id_estudiante = '';
+    estudianteSelected.value = null;
     estudianteSearchQuery.value = '';
     estudiantesOptions.value = [];
-    estudianteDropdownOpen.value = false;
 }
 
-function handleEstudianteBlur() {
-    setTimeout(() => {
-        estudianteDropdownOpen.value = false;
-    }, 200);
-}
-
-async function initializeTable() {
-    await nextTick();
-    if (!tableEl.value) return;
-
-    table.value = new Tabulator(tableEl.value, {
-        layout: 'fitColumns',
-        reactiveData: false,
-        placeholder: 'No se encontraron registros',
-        columns,
-        printHeader: '<h4 class="mb-3">Listado de usuarios</h4>',
-        printFooter: '<small>Generado desde la intranet</small>',
-        height: 'calc(100vh - 360px)',
-        columnDefaults: {
-            resizable: true,
-        },
-        ajaxURL: 'configuracion/usuario',
-        ajaxContentType: 'json',
-        ajaxRequestFunc: async (url: string) => {
-            const response = await apiClient.get(url);
-            return response.data;
-        },
-        ajaxResponse: (_url: string, _params: any, response: any) => {
-            const data: Usuario[] = response?.data ?? [];
-            usuarios.value = data;
-            loading.value = false;
-            updateRecordSummary();
-            return data;
-        },
-    });
-
-    table.value.on('dataLoading', () => {
-        loading.value = true;
-    });
-    table.value.on('tableBuilt', prepareColumnMenu);
-    table.value.on('dataLoaded', updateRecordSummary);
-    table.value.on('dataFiltered', updateRecordSummary);
-    table.value.on('columnVisibilityChanged', prepareColumnMenu);
-}
-
-function prepareColumnMenu() {
-    if (!table.value) return;
-    columnMenu.value = table.value.getColumns().map((column: any) => ({
-        title: column.getDefinition().title ?? '',
-        field: column.getField(),
-        visible: column.isVisible(),
-    }));
-}
-
-function handleActionCellClick(e: MouseEvent, cell: any) {
-    const target = e.target as HTMLElement;
-    const toggleButton = target.closest('button[data-action="toggle-menu"]');
-
-    if (toggleButton) {
-        e.stopPropagation();
-        const group = toggleButton.closest('.actions-menu');
-        const menu = group?.querySelector('.actions-menu__dropdown');
-        const isOpen = menu?.classList.contains('show');
-        closeAllActionDropdowns();
-        if (!isOpen) {
-            menu?.classList.add('show');
-        }
-        return;
-    }
-
-    const actionBtn = target.closest('button[data-action]');
-    if (!actionBtn) return;
-
-    e.stopPropagation();
-    closeAllActionDropdowns();
-    const action = actionBtn.getAttribute('data-action');
-    const data = cell.getRow().getData() as Usuario;
-
-    if (action === 'edit') {
-        openEditModal(data);
-    } else if (action === 'delete') {
-        openDeleteModal(data);
-    } else if (action === 'change-password') {
-        openChangePasswordModal(data);
-    } else if (action === 'suspend') {
-        openSuspendModal(data);
-    } else if (action === 'activate') {
-        handleActivate(data);
-    }
-}
-
-async function reloadTable() {
-    if (!table.value) return;
-    loading.value = true;
-    await table.value.replaceData('configuracion/usuario');
-    applySearch(searchQuery.value);
-    updateRecordSummary();
-}
-
-function applySearch(query: string) {
-    const normalized = query.trim().toLowerCase();
-    if (!table.value) return;
-
-    if (!normalized) {
-        table.value.clearFilter(true);
-    } else {
-        table.value.setFilter((rowData: Usuario) => {
-            const values = [rowData.nombre, rowData.apellido, rowData.usuario, rowData.email];
-            return values.some((value) => value?.toLowerCase().includes(normalized));
-        });
-    }
-
-    updateRecordSummary();
-}
-
-function updateRecordSummary() {
-    if (!table.value) {
-        recordSummary.value = 'Mostrando 0 registros';
-        return;
-    }
-
-    const filteredRows = table.value.getRows(true).length;
-    const totalRows = table.value.getData().length || usuarios.value.length;
-    recordSummary.value = `Mostrando ${filteredRows} de ${totalRows} registros`;
-}
-
+// Funciones de modales
 async function openCreateModal() {
     editingId.value = null;
     resetSaveForm();
     imagenUpload.reset();
     clearEstudiante();
-    // Recargar selects antes de abrir el modal
     await loadSelects();
     showSaveModal.value = true;
 }
 
 async function openEditModal(usuarioData: Usuario) {
     editingId.value = usuarioData.id;
-    // Recargar selects antes de abrir el modal
     await loadSelects();
     
-    // Primero establecer el tipo de persona para que los computed properties se actualicen
     saveForm.tipo_persona = usuarioData.tipo_persona || 'STANDARD';
     
-    // Esperar un tick para que Vue actualice los computed properties
     await nextTick();
     
-    // Luego establecer los demás valores
     saveForm.id_personal = usuarioData.id_personal ? String(usuarioData.id_personal) : '';
     saveForm.id_estudiante = usuarioData.id_estudiante ? String(usuarioData.id_estudiante) : '';
     saveForm.nombre = usuarioData.nombre || '';
@@ -412,9 +224,9 @@ async function openEditModal(usuarioData: Usuario) {
         imagenUpload.setPreview('/images/sin_imagen.jpg');
     }
     
-    // Si es estudiante, establecer el texto de búsqueda
     if (usuarioData.tipo_persona === 'ESTUDIANTE' && usuarioData.id_estudiante) {
         estudianteSearchQuery.value = usuarioData.estudiante_nombre || `${usuarioData.nombre || ''} ${usuarioData.apellido || ''}`.trim() || '';
+        estudianteSelected.value = { id: usuarioData.id_estudiante, text: estudianteSearchQuery.value };
     }
 
     showSaveModal.value = true;
@@ -436,6 +248,18 @@ function openSuspendModal(usuarioData: Usuario) {
     showSuspendModal.value = true;
 }
 
+function resetSaveForm() {
+    saveForm.tipo_persona = 'STANDARD';
+    saveForm.id_personal = '';
+    saveForm.id_estudiante = '';
+    saveForm.nombre = '';
+    saveForm.apellido = '';
+    saveForm.email = '';
+    saveForm.usuario = '';
+    saveForm.password = '';
+    saveForm.id_rol = '';
+    saveForm.fl_ver_informacion_privada = false;
+}
 
 async function handleSaveSubmit() {
     if (!saveForm.usuario.trim()) {
@@ -460,6 +284,11 @@ async function handleSaveSubmit() {
 
     if (saveForm.tipo_persona === 'STANDARD' && (!saveForm.nombre.trim() || !saveForm.apellido.trim())) {
         notificacion('El nombre y apellido son obligatorios para tipo STANDARD.', { type: 'danger', title: 'Validación' });
+        return;
+    }
+
+    if (saveForm.tipo_persona === 'ESTUDIANTE' && !saveForm.id_estudiante) {
+        notificacion('El estudiante es obligatorio para tipo ESTUDIANTE.', { type: 'danger', title: 'Validación' });
         return;
     }
 
@@ -497,7 +326,7 @@ async function handleSaveSubmit() {
     }
 
     if (editingId.value) {
-        const usuarioActual = usuarios.value.find((u: Usuario) => u.id === editingId.value);
+        const usuarioActual = table.items.value.find((u: Usuario) => u.id === editingId.value);
         if (usuarioActual?.imagen && !imagenUpload.file.value) {
             formData.append('imagen_anterior', usuarioActual.imagen);
         }
@@ -519,7 +348,7 @@ async function handleSaveSubmit() {
         }
 
         showSaveModal.value = false;
-        await reloadTable();
+        await table.reloadTable();
     } catch (error: any) {
         if (error.response?.data?.errors) {
             const errors = error.response.data.errors;
@@ -544,7 +373,7 @@ async function handleDeleteConfirm() {
         await apiClient.delete(`/configuracion/usuario/${deleteTarget.value.id}`);
         notificacion('Usuario eliminado correctamente.', { type: 'success' });
         showDeleteModal.value = false;
-        await reloadTable();
+        await table.reloadTable();
     } catch (error: any) {
         const message = error.response?.data?.message || 'No fue posible eliminar el registro.';
         notificacion(message, { type: 'danger', title: 'Error' });
@@ -569,7 +398,7 @@ async function handleChangePasswordSubmit() {
         });
         notificacion('Contraseña actualizada correctamente.', { type: 'success' });
         showChangePasswordModal.value = false;
-        await reloadTable();
+        await table.reloadTable();
     } catch (error: any) {
         const message = error.response?.data?.message || 'No fue posible cambiar la contraseña.';
         notificacion(message, { type: 'danger', title: 'Error' });
@@ -587,7 +416,7 @@ async function handleSuspendConfirm() {
         await apiClient.post(`/configuracion/usuario/${suspendTarget.value.id}/suspend`);
         notificacion('Usuario suspendido correctamente.', { type: 'success' });
         showSuspendModal.value = false;
-        await reloadTable();
+        await table.reloadTable();
     } catch (error: any) {
         const message = error.response?.data?.message || 'No fue posible suspender el usuario.';
         notificacion(message, { type: 'danger', title: 'Error' });
@@ -600,514 +429,561 @@ async function handleActivate(usuario: Usuario) {
     try {
         await apiClient.post(`/configuracion/usuario/${usuario.id}/activate`);
         notificacion('Usuario activado correctamente.', { type: 'success' });
-        await reloadTable();
+        await table.reloadTable();
     } catch (error: any) {
         const message = error.response?.data?.message || 'No fue posible activar el usuario.';
         notificacion(message, { type: 'danger', title: 'Error' });
     }
 }
 
-function downloadExcel() {
-    if (!table.value) return;
-    // @ts-ignore Assign XLSX global
-    (window as any).XLSX = XLSX;
-    table.value.download('xlsx', 'usuarios.xlsx', { sheetName: 'Usuarios' });
-}
+// Funciones
+const updateSearchValue = (value: string) => {
+    table.searchQuery.value = value;
+    table.applySearch(value);
+};
 
-function printTable() {
-    table.value?.print(false, true);
-}
+const downloadExcel = () => {
+    table.downloadExcel('usuarios.xlsx', 'Usuarios');
+};
 
-function toggleColumnVisibility(field: string) {
-    if (!table.value) return;
-    const column = table.value.getColumn(field);
-    if (!column) return;
+const toggleColumnVisibility = (key: string) => {
+    table.toggleColumnVisibility(key);
+};
 
-    column.toggle();
-    columnMenu.value = columnMenu.value.map((item) =>
-        item.field === field ? { ...item, visible: column.isVisible() } : item,
-    );
-}
-
-function resetSaveForm() {
-    saveForm.tipo_persona = 'STANDARD';
-    saveForm.id_personal = '';
-    saveForm.id_estudiante = '';
-    saveForm.nombre = '';
-    saveForm.apellido = '';
-    saveForm.email = '';
-    saveForm.usuario = '';
-    saveForm.password = '';
-    saveForm.id_rol = '';
-    saveForm.fl_ver_informacion_privada = false;
-}
-
-function closeSaveModal() {
-    if (saving.value) return;
-    showSaveModal.value = false;
-}
-
-function closeDeleteModal() {
-    if (deleting.value) return;
-    showDeleteModal.value = false;
-}
-
-function closeChangePasswordModal() {
-    if (changingPassword.value) return;
-    showChangePasswordModal.value = false;
-}
-
-function closeSuspendModal() {
-    if (suspending.value) return;
-    showSuspendModal.value = false;
-}
-
-function updateSearchValue(value: string) {
-    searchQuery.value = value;
-}
-
+// Watchers
 watch(() => saveForm.tipo_persona, (newValue) => {
-    // Limpiar campos cuando cambia el tipo de persona
     saveForm.id_personal = '';
     saveForm.id_estudiante = '';
     saveForm.nombre = '';
     saveForm.apellido = '';
     clearEstudiante();
     
-    // Si cambia a ESTUDIANTE, limpiar el rol
     if (newValue === 'ESTUDIANTE') {
         saveForm.id_rol = '';
     }
 });
 
-// Watcher para búsqueda de estudiantes con debounce (similar a Select2)
-watch(estudianteSearchQuery, (newValue) => {
-    if (estudianteSearchTimeout.value) {
-        clearTimeout(estudianteSearchTimeout.value);
-    }
-
-    if (saveForm.tipo_persona === 'ESTUDIANTE') {
-        estudianteSearchTimeout.value = setTimeout(() => {
-            searchEstudiantes(newValue);
-        }, 250); // Delay similar a Select2
+watch(estudianteSelected, (newValue) => {
+    if (newValue) {
+        saveForm.id_estudiante = String(newValue.id);
+        estudianteSearchQuery.value = newValue.text;
     } else {
-        estudiantesOptions.value = [];
-        estudianteDropdownOpen.value = false;
+        saveForm.id_estudiante = '';
+        estudianteSearchQuery.value = '';
     }
 });
 
+// Lifecycle
 onMounted(async () => {
-    // @ts-ignore expose for Tabulator download module
     (window as any).XLSX = XLSX;
     await loadSelects();
-    await initializeTable();
-    // No llamar reloadTable() aquí - la tabla ya carga datos automáticamente con ajaxURL
-    document.addEventListener('click', handleGlobalClick);
+    await table.loadItems({
+        page: 1,
+        itemsPerPage: 10,
+    });
 });
 
-// Recargar selects cuando el componente se activa (al volver a la página)
 onActivated(async () => {
     await loadSelects();
-});
-
-watch(searchQuery, (value) => {
-    applySearch(value);
-});
-
-onBeforeUnmount(() => {
-    table.value?.destroy();
-    document.removeEventListener('click', handleGlobalClick);
 });
 </script>
 
 <template>
     <AuthenticatedLayout>
-        <template #header>
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                <div>
-                    <h1 class="h2 mb-1">Configuración / Usuarios</h1>
-                    <p class="text-secondary mb-0">
-                        Gestiona los usuarios del sistema; crea, edita, suspende o elimina según necesidad.
-                    </p>
-                </div>
-                <div class="btn-group">
-                    <button
-                        type="button"
-                        class="btn btn-primary d-flex align-items-center gap-2"
-                        @click="openCreateModal"
-                    >
-                        <i class="ti ti-plus"></i>
-                        Nuevo
-                    </button>
-                </div>
-            </div>
-        </template>
-
-        <div class="usuario-page">
-            <TableCard
-                :loading="loading"
-                :column-menu="columnMenu"
-                :search-value="searchQuery"
-                search-placeholder="Buscar usuarios..."
-                @print="printTable"
-                @export="downloadExcel"
-                @toggle-column="toggleColumnVisibility"
-                @update:search="updateSearchValue"
-            >
-                <div ref="tableEl" class="tabulator-wrapper"></div>
-
-                <template #footer-left>
-                    <span>{{ recordSummary }}</span>
-                </template>
-                <template #footer-right>
-                    <span>Actualizado automáticamente al guardar cambios.</span>
-                </template>
-            </TableCard>
-        </div>
-
-        <!-- Modal Save/Edit -->
-        <AppModal
-            :open="showSaveModal"
-            :title="saveModalTitle"
-            size="xl"
-            @close="closeSaveModal"
-        >
-            <template #body>
-                <form class="space-y-3" @submit.prevent>
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="mb-3" align="center">
-                                <div class="mb-2">
-                                    <img
-                                        :key="`imagen-${editingId || 'new'}-${imagenUpload.preview}`"
-                                        :src="imagenUpload.preview || '/images/sin_imagen.jpg'"
-                                        alt="Imagen"
-                                        class="img-fluid rounded"
-                                        style="max-width: 100%; max-height: 200px; object-fit: cover; border: 1px solid #dee2e6;"
-                                        @error="(e: Event) => { 
-                                            const img = e.target as HTMLImageElement;
-                                            if (img.src && !img.src.includes('data:') && img.src !== 'data:image/svg+xml') {
-                                                img.src = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Crect fill=\'%23ddd\' width=\'200\' height=\'200\'/%3E%3Ctext fill=\'%23999\' font-family=\'sans-serif\' font-size=\'14\' dy=\'10.5\' font-weight=\'bold\' x=\'50%25\' y=\'50%25\' text-anchor=\'middle\'%3ESin Imagen%3C/text%3E%3C/svg%3E';
-                                            }
-                                        }"
-                                    />
-                                </div>
-                                <label class="btn btn-default btn-sm w-100">
-                                    <i class="ti ti-upload me-1"></i> Imagen de Perfil
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        style="display: none;"
-                                        @change="imagenUpload.handleChange"
-                                    />
-                                </label>
-                            </div>
+        <v-container fluid class="pa-4">
+            <!-- Header Section -->
+            <v-card class="mb-4" rounded="lg" elevation="1">
+                <v-card-text class="pa-4">
+                    <div class="d-flex flex-wrap align-center justify-space-between ga-4">
+                        <div>
+                            <h1 class="text-h5 font-weight-bold mb-2">Usuarios</h1>
+                            <p class="text-body-2 text-medium-emphasis mb-0">
+                                Gestiona los usuarios del sistema; crea, edita, suspende o elimina según necesidad.
+                            </p>
                         </div>
-                        <div class="col-md-9">
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label required">Tipo Persona</label>
-                                    <select v-model="saveForm.tipo_persona" class="form-select" required>
-                                        <option value="STANDARD">USUARIO STANDARD</option>
-                                        <option value="DOCENTE">DOCENTE</option>
-                                        <option value="ESTUDIANTE">ESTUDIANTE</option>
-                                    </select>
-                                </div>
-                                <div v-if="showPersonalSelect" class="col-md-12 mb-3">
-                                    <label class="form-label required">Docente</label>
-                                    <select v-model="saveForm.id_personal" class="form-select" :required="showPersonalSelect">
-                                        <option value="">Seleccionar...</option>
-                                        <option v-for="p in personal" :key="p.id" :value="String(p.id)">
-                                            {{ p.text }}
-                                        </option>
-                                    </select>
-                                </div>
-                                <div v-if="showEstudianteSelect" class="col-md-12 mb-3">
-                                    <label class="form-label required">Estudiante</label>
-                                    <div class="position-relative">
-                                        <input
-                                            v-model="estudianteSearchQuery"
-                                            type="text"
-                                            class="form-control"
-                                            :class="{ 'is-invalid': showEstudianteSelect && !saveForm.id_estudiante && estudianteSearchQuery.length >= 3 && !estudianteSearchLoading }"
-                                            placeholder="NOMBRES Y APELLIDOS || DNI (mínimo 3 caracteres)"
-                                            :required="showEstudianteSelect"
-                                            autocomplete="off"
-                                            @focus="estudianteDropdownOpen = estudianteSearchQuery.length >= 3 && estudiantesOptions.length > 0"
-                                            @blur="handleEstudianteBlur"
-                                        />
-                                        <div v-if="estudianteSearchLoading" class="position-absolute top-50 end-0 translate-middle-y me-2">
-                                            <span class="spinner-border spinner-border-sm text-primary"></span>
-                                        </div>
-                                        <button
-                                            v-if="saveForm.id_estudiante && !estudianteSearchLoading"
-                                            type="button"
-                                            class="btn btn-sm btn-link position-absolute top-50 end-0 translate-middle-y me-2"
-                                            style="padding: 0; line-height: 1;"
-                                            @click="clearEstudiante"
-                                        >
-                                            <i class="ti ti-x"></i>
-                                        </button>
-                                    </div>
-                                    <div v-if="estudianteSearchQuery.length > 0 && estudianteSearchQuery.length < 3" class="form-text text-muted">
-                                        Digite mínimo 3 caracteres
-                                    </div>
-                                    <div
-                                        v-if="estudianteDropdownOpen && estudiantesOptions.length > 0"
-                                        class="dropdown-menu show position-absolute w-100"
-                                        style="max-height: 200px; overflow-y: auto; z-index: 1050;"
-                                    >
-                                        <button
-                                            v-for="est in estudiantesOptions"
-                                            :key="est.id"
-                                            type="button"
-                                            class="dropdown-item"
-                                            @click="selectEstudiante(est)"
-                                        >
-                                            {{ est.text }}
-                                        </button>
-                                    </div>
-                                    <div v-if="estudianteSearchQuery.length >= 3 && !estudianteSearchLoading && estudiantesOptions.length === 0 && estudianteDropdownOpen" class="form-text text-danger">
-                                        No se encontraron estudiantes
-                                    </div>
-                                    <input
-                                        v-model="saveForm.id_estudiante"
-                                        type="hidden"
-                                        :required="showEstudianteSelect"
-                                    />
-                                </div>
-                                <div v-if="showNombreApellido" class="col-md-6 mb-3">
-                                    <label class="form-label required">Nombre</label>
-                                    <input
-                                        v-model="saveForm.nombre"
-                                        type="text"
-                                        class="form-control"
-                                        maxlength="200"
-                                        :required="showNombreApellido"
-                                    />
-                                </div>
-                                <div v-if="showNombreApellido" class="col-md-6 mb-3">
-                                    <label class="form-label required">Apellidos</label>
-                                    <input
-                                        v-model="saveForm.apellido"
-                                        type="text"
-                                        class="form-control"
-                                        maxlength="200"
-                                        :required="showNombreApellido"
-                                    />
-                                </div>
-                                <div class="col-md-12 mb-3">
-                                    <label class="form-label required">Correo Electrónico</label>
-                                    <input
-                                        v-model="saveForm.email"
-                                        type="email"
-                                        class="form-control"
-                                        maxlength="100"
-                                        required
-                                    />
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label required">Usuario</label>
-                                    <input
-                                        v-model="saveForm.usuario"
-                                        type="text"
-                                        class="form-control"
-                                        maxlength="50"
-                                        required
-                                    />
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label" :class="{ required: !editingId }">Contraseña</label>
-                                    <input
-                                        v-model="saveForm.password"
-                                        type="password"
-                                        class="form-control"
-                                        maxlength="255"
-                                        :required="!editingId"
-                                        :placeholder="editingId ? 'Dejar vacío para mantener la contraseña actual' : 'Contraseña'"
-                                    />
-                                    <small v-if="editingId" class="text-muted">Dejar vacío para mantener la contraseña actual</small>
-                                </div>
-                                <div v-if="showRolSelect" class="col-md-12 mb-3">
-                                    <label class="form-label">Rol y Permisos</label>
-                                    <select v-model="saveForm.id_rol" class="form-select">
-                                        <option value="">Seleccionar...</option>
-                                        <option v-for="rol in roles" :key="rol.id" :value="String(rol.id)">
-                                            {{ rol.text }}
-                                        </option>
-                                    </select>
-                                </div>
-                                <div class="col-md-12 mb-0">
-                                    <div class="form-check">
-                                        <input
-                                            v-model="saveForm.fl_ver_informacion_privada"
-                                            class="form-check-input"
-                                            type="checkbox"
-                                            id="fl_ver_informacion_privada"
-                                        />
-                                        <label class="form-check-label" for="fl_ver_informacion_privada">
-                                            Ver información privada
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <v-btn
+                            color="primary"
+                            prepend-icon="mdi-plus"
+                            variant="flat"
+                            size="default"
+                            @click="openCreateModal"
+                            aria-label="Crear nuevo usuario"
+                            class="text-none"
+                        >
+                            Nuevo Usuario
+                        </v-btn>
                     </div>
-                </form>
-            </template>
-            <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button type="button" class="btn btn-default btn-sm pull-left" @click="closeSaveModal">
-                        <i class="fa fa-times"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-primary btn-sm"
-                        :disabled="saving"
-                        @click="handleSaveSubmit"
-                    >
-                        <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
-                        {{ editingId ? 'Actualizar' : 'Guardar' }}
-                    </button>
-                </div>
-            </template>
-        </AppModal>
+                </v-card-text>
+            </v-card>
 
-        <!-- Modal Delete -->
-        <AppModal
-            :open="showDeleteModal"
-            title="Eliminar usuario"
-            size="sm"
-            @close="closeDeleteModal"
-        >
-            <template #body>
-                <p class="mb-0">
-                    ¿Seguro que deseas eliminar el usuario
-                    <strong>{{ deleteTarget?.nombre }} {{ deleteTarget?.apellido }}</strong>? Esta acción no se puede deshacer.
-                </p>
-            </template>
-            <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button type="button" class="btn btn-default btn-sm pull-left" @click="closeDeleteModal">
-                        <i class="fa fa-times"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-danger btn-sm"
-                        :disabled="deleting"
-                        @click="handleDeleteConfirm"
+            <!-- Table Section -->
+            <v-card rounded="lg" elevation="1">
+                <VDataTableCard
+                    :loading="table.loading.value"
+                    :column-menu="table.columnMenu.value"
+                    :search-value="table.searchQuery.value"
+                    search-placeholder="Buscar usuarios..."
+                    @print="table.printTable"
+                    @export="downloadExcel"
+                    @toggle-column="toggleColumnVisibility"
+                    @update:search="updateSearchValue"
+                >
+                    <v-data-table-server
+                        v-model:page="table.page.value"
+                        v-model:items-per-page="table.itemsPerPage.value"
+                        v-model:sort-by="table.sortBy.value"
+                        :headers="headers.filter(h => table.columnMenu.value.find(c => c.key === h.key)?.visible !== false)"
+                        :items="table.items.value"
+                        :loading="table.loading.value"
+                        :items-length="table.totalItems.value"
+                        :density="'compact'"
+                        :fixed-header="true"
+                        height="450"
+                        :items-per-page-options="[]"
+                        hide-default-footer
+                        @update:options="table.loadItems"
+                        class="elevation-0"
                     >
-                        <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
-                        Eliminar
-                    </button>
-                </div>
-            </template>
-        </AppModal>
+                        <template #item.actions="{ item }">
+                            <div class="d-flex align-center ga-1">
+                                <v-btn
+                                    icon="mdi-pencil"
+                                    size="small"
+                                    color="primary"
+                                    variant="flat"
+                                    @click="openEditModal(item)"
+                                />
+                                <v-menu>
+                                    <template #activator="{ props: menuProps }">
+                                        <v-btn
+                                            v-bind="menuProps"
+                                            icon="mdi-dots-vertical"
+                                            size="small"
+                                            color="grey-darken-1"
+                                            variant="text"
+                                        />
+                                    </template>
+                                    <v-list density="compact">
+                                        <v-list-item
+                                            prepend-icon="mdi-lock"
+                                            title="Cambiar Contraseña"
+                                            @click="openChangePasswordModal(item)"
+                                        />
+                                        <v-list-item
+                                            v-if="item.fl_suspendido"
+                                            prepend-icon="mdi-play"
+                                            title="Activar"
+                                            class="text-success"
+                                            @click="handleActivate(item)"
+                                        />
+                                        <v-list-item
+                                            v-else
+                                            prepend-icon="mdi-pause"
+                                            title="Suspender"
+                                            class="text-warning"
+                                            @click="openSuspendModal(item)"
+                                        />
+                                        <v-divider />
+                                        <v-list-item
+                                            prepend-icon="mdi-delete"
+                                            title="Eliminar"
+                                            class="text-error"
+                                            @click="openDeleteModal(item)"
+                                        />
+                                    </v-list>
+                                </v-menu>
+                            </div>
+                        </template>
 
-        <!-- Modal Change Password -->
-        <AppModal
-            :open="showChangePasswordModal"
-            title="Cambiar contraseña"
-            size="sm"
-            @close="closeChangePasswordModal"
-        >
-            <template #body>
-                <div class="text-center mb-3">
-                    <i class="ti ti-lock" style="font-size: 3rem;"></i>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Usuario</label>
-                    <input
-                        :value="changePasswordTarget?.usuario"
-                        type="text"
-                        class="form-control"
-                        disabled
-                    />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Correo electrónico</label>
-                    <input
-                        :value="changePasswordTarget?.email"
-                        type="email"
-                        class="form-control"
-                        disabled
-                    />
-                </div>
-                <div class="mb-0">
-                    <label class="form-label required">Nueva Contraseña</label>
-                    <input
-                        v-model="passwordForm.password"
-                        type="password"
-                        class="form-control"
-                        maxlength="255"
-                        required
-                    />
-                </div>
-            </template>
-            <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button type="button" class="btn btn-default btn-sm pull-left" @click="closeChangePasswordModal">
-                        <i class="fa fa-times"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-primary btn-sm"
-                        :disabled="changingPassword"
-                        @click="handleChangePasswordSubmit"
-                    >
-                        <span v-if="changingPassword" class="spinner-border spinner-border-sm me-2"></span>
-                        Guardar
-                    </button>
-                </div>
-            </template>
-        </AppModal>
+                        <template #item.fl_suspendido="{ value }">
+                            <v-chip
+                                :color="value ? 'warning' : 'success'"
+                                size="small"
+                                variant="flat"
+                                class="text-uppercase font-weight-medium"
+                            >
+                                {{ value ? 'SUSPENDIDO' : 'ACTIVO' }}
+                            </v-chip>
+                        </template>
 
-        <!-- Modal Suspend -->
-        <AppModal
-            :open="showSuspendModal"
-            title="Suspender usuario"
-            size="sm"
-            @close="closeSuspendModal"
-        >
-            <template #body>
-                <div class="text-center mb-3">
-                    <i class="ti ti-pause" style="font-size: 3rem;"></i>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Usuario</label>
-                    <input
-                        :value="suspendTarget?.usuario"
-                        type="text"
-                        class="form-control"
-                        disabled
-                    />
-                </div>
-                <div class="mb-0">
-                    <label class="form-label">Correo electrónico</label>
-                    <input
-                        :value="suspendTarget?.email"
-                        type="email"
-                        class="form-control"
-                        disabled
-                    />
-                </div>
-            </template>
-            <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button type="button" class="btn btn-default btn-sm pull-left" @click="closeSuspendModal">
-                        <i class="fa fa-times"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-warning btn-sm"
-                        :disabled="suspending"
-                        @click="handleSuspendConfirm"
-                    >
-                        <span v-if="suspending" class="spinner-border spinner-border-sm me-2"></span>
-                        Suspender Ahora!
-                    </button>
-                </div>
-            </template>
-        </AppModal>
+                        <template #item.tipo_persona="{ value }">
+                            <v-chip
+                                color="primary"
+                                size="small"
+                                variant="flat"
+                                class="text-uppercase font-weight-medium"
+                            >
+                                {{ value || 'STANDARD' }}
+                            </v-chip>
+                        </template>
+                    </v-data-table-server>
+
+                    <template #footer-left>
+                        <span class="text-body-2 text-medium-emphasis">{{ table.recordSummary.value }}</span>
+                    </template>
+                    <template #footer-right>
+                        <span class="text-body-2 text-medium-emphasis">Actualizado automáticamente</span>
+                    </template>
+                </VDataTableCard>
+            </v-card>
+
+            <!-- Save/Edit Modal -->
+            <AppModal
+                v-model:open="showSaveModal"
+                :title="saveModalTitle"
+                size="xl"
+            >
+                <template #body>
+                    <v-container fluid class="pa-4">
+                        <v-form @submit.prevent>
+                            <v-row>
+                                <v-col cols="12" md="3">
+                                    <v-card variant="outlined" class="pa-3" rounded="md">
+                                        <div class="text-center mb-3">
+                                            <label class="text-body-2 font-weight-medium mb-2 d-block">Imagen de Perfil</label>
+                                            <v-img
+                                                :src="imagenUpload.preview.value || '/images/sin_imagen.jpg'"
+                                                alt="Imagen"
+                                                class="mx-auto"
+                                                rounded="md"
+                                                max-width="200"
+                                                max-height="200"
+                                                contain
+                                                style="border: 1px solid rgba(0,0,0,0.12);"
+                                            />
+                                        </div>
+                                        <v-file-input
+                                            label="Examinar Imagen"
+                                            prepend-icon="mdi-camera"
+                                            variant="outlined"
+                                            density="compact"
+                                            accept="image/*"
+                                            @change="imagenUpload.handleChange"
+                                            hide-details
+                                        />
+                                    </v-card>
+                                </v-col>
+                                <v-col cols="12" md="9">
+                                    <v-row>
+                                        <v-col cols="12" md="4">
+                                            <v-select
+                                                v-model="saveForm.tipo_persona"
+                                                label="Tipo de Persona"
+                                                :items="[
+                                                    { title: 'USUARIO STANDARD', value: 'STANDARD' },
+                                                    { title: 'DOCENTE', value: 'DOCENTE' },
+                                                    { title: 'ESTUDIANTE', value: 'ESTUDIANTE' },
+                                                ]"
+                                                required
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col v-if="showPersonalSelect" cols="12">
+                                            <v-select
+                                                v-model="saveForm.id_personal"
+                                                label="Docente"
+                                                :items="personal.map(p => ({ title: p.text, value: String(p.id) }))"
+                                                :required="showPersonalSelect"
+                                                clearable
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col v-if="showEstudianteSelect" cols="12">
+                                            <v-autocomplete
+                                                v-model="estudianteSelected"
+                                                :items="estudiantesOptions"
+                                                :search="estudianteSearchQuery"
+                                                :loading="estudianteSearchLoading"
+                                                label="Estudiante"
+                                                placeholder="NOMBRES Y APELLIDOS || DNI (mínimo 3 caracteres)"
+                                                :required="showEstudianteSelect"
+                                                item-title="text"
+                                                item-value="id"
+                                                return-object
+                                                clearable
+                                                variant="outlined"
+                                                density="compact"
+                                                @update:search="(val) => { estudianteSearchQuery = val; if (val && val.length >= 3) searchEstudiantes(val); }"
+                                            >
+                                                <template #no-data>
+                                                    <div class="pa-2 text-center">
+                                                        {{ estudianteSearchQuery.length < 3 ? 'Digite mínimo 3 caracteres' : 'No se encontraron estudiantes' }}
+                                                    </div>
+                                                </template>
+                                            </v-autocomplete>
+                                            <input
+                                                v-model="saveForm.id_estudiante"
+                                                type="hidden"
+                                                :required="showEstudianteSelect"
+                                            />
+                                        </v-col>
+                                        <v-col v-if="showNombreApellido" cols="12" md="6">
+                                            <v-text-field
+                                                v-model="saveForm.nombre"
+                                                label="Nombre"
+                                                :required="showNombreApellido"
+                                                maxlength="200"
+                                                counter
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col v-if="showNombreApellido" cols="12" md="6">
+                                            <v-text-field
+                                                v-model="saveForm.apellido"
+                                                label="Apellidos"
+                                                :required="showNombreApellido"
+                                                maxlength="200"
+                                                counter
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12">
+                                            <v-text-field
+                                                v-model="saveForm.email"
+                                                label="Correo Electrónico"
+                                                type="email"
+                                                required
+                                                maxlength="100"
+                                                counter
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12" md="6">
+                                            <v-text-field
+                                                v-model="saveForm.usuario"
+                                                label="Usuario"
+                                                required
+                                                maxlength="50"
+                                                counter
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12" md="6">
+                                            <v-text-field
+                                                v-model="saveForm.password"
+                                                label="Contraseña"
+                                                type="password"
+                                                :required="!editingId"
+                                                :placeholder="editingId ? 'Dejar vacío para mantener la contraseña actual' : 'Contraseña'"
+                                                maxlength="255"
+                                                counter
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                            <small v-if="editingId" class="text-caption text-medium-emphasis d-block mt-1">
+                                                Dejar vacío para mantener la contraseña actual
+                                            </small>
+                                        </v-col>
+                                        <v-col v-if="showRolSelect" cols="12">
+                                            <v-select
+                                                v-model="saveForm.id_rol"
+                                                label="Rol y Permisos"
+                                                :items="roles.map(r => ({ title: r.text, value: String(r.id) }))"
+                                                clearable
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12">
+                                            <v-checkbox
+                                                v-model="saveForm.fl_ver_informacion_privada"
+                                                label="Ver información privada"
+                                                hide-details
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                    </v-row>
+                                </v-col>
+                            </v-row>
+                        </v-form>
+                    </v-container>
+                </template>
+                <template #footer>
+                    <div class="d-flex justify-end ga-2">
+                        <v-btn
+                            variant="outlined"
+                            @click="showSaveModal = false"
+                            :disabled="saving"
+                            class="text-none"
+                        >
+                            Cancelar
+                        </v-btn>
+                        <v-btn
+                            color="primary"
+                            variant="flat"
+                            @click="handleSaveSubmit"
+                            :loading="saving"
+                            class="text-none"
+                        >
+                            {{ editingId ? 'Actualizar' : 'Guardar' }}
+                        </v-btn>
+                    </div>
+                </template>
+            </AppModal>
+
+            <!-- Delete Modal -->
+            <AppModal
+                v-model:open="showDeleteModal"
+                title="Eliminar Usuario"
+                size="sm"
+            >
+                <template #body>
+                    <v-container fluid class="pa-4">
+                        <div class="text-center mb-4">
+                            <v-icon icon="mdi-alert-circle" size="64" color="error" />
+                        </div>
+                        <p class="text-body-1 text-center">
+                            ¿Está seguro que desea eliminar el usuario
+                            <strong class="text-error">{{ deleteTarget?.nombre }} {{ deleteTarget?.apellido }}</strong>?
+                        </p>
+                        <p class="text-body-2 text-medium-emphasis text-center mt-2">
+                            Esta acción no se puede deshacer.
+                        </p>
+                    </v-container>
+                </template>
+                <template #footer>
+                    <div class="d-flex justify-end ga-2">
+                        <v-btn
+                            variant="outlined"
+                            @click="showDeleteModal = false"
+                            :disabled="deleting"
+                            class="text-none"
+                        >
+                            Cancelar
+                        </v-btn>
+                        <v-btn
+                            color="error"
+                            variant="flat"
+                            @click="handleDeleteConfirm"
+                            :loading="deleting"
+                            class="text-none"
+                        >
+                            Eliminar
+                        </v-btn>
+                    </div>
+                </template>
+            </AppModal>
+
+            <!-- Modal Change Password -->
+            <AppModal
+                v-model:open="showChangePasswordModal"
+                title="Cambiar Contraseña"
+                size="sm"
+            >
+                <template #body>
+                    <v-container fluid class="pa-4">
+                        <div class="text-center mb-4">
+                            <v-icon icon="mdi-lock" size="64" color="primary" />
+                        </div>
+                        <v-text-field
+                            :model-value="changePasswordTarget?.usuario"
+                            label="Usuario"
+                            disabled
+                            variant="outlined"
+                            density="compact"
+                            class="mb-4"
+                        />
+                        <v-text-field
+                            :model-value="changePasswordTarget?.email"
+                            label="Correo electrónico"
+                            type="email"
+                            disabled
+                            variant="outlined"
+                            density="compact"
+                            class="mb-4"
+                        />
+                        <v-text-field
+                            v-model="passwordForm.password"
+                            label="Nueva Contraseña"
+                            type="password"
+                            required
+                            maxlength="255"
+                            counter
+                            variant="outlined"
+                            density="compact"
+                        />
+                    </v-container>
+                </template>
+                <template #footer>
+                    <div class="d-flex justify-end ga-2">
+                        <v-btn
+                            variant="outlined"
+                            @click="showChangePasswordModal = false"
+                            :disabled="changingPassword"
+                            class="text-none"
+                        >
+                            Cancelar
+                        </v-btn>
+                        <v-btn
+                            color="primary"
+                            variant="flat"
+                            @click="handleChangePasswordSubmit"
+                            :loading="changingPassword"
+                            class="text-none"
+                        >
+                            Guardar
+                        </v-btn>
+                    </div>
+                </template>
+            </AppModal>
+
+            <!-- Modal Suspend -->
+            <AppModal
+                v-model:open="showSuspendModal"
+                title="Suspender Usuario"
+                size="sm"
+            >
+                <template #body>
+                    <v-container fluid class="pa-4">
+                        <div class="text-center mb-4">
+                            <v-icon icon="mdi-pause" size="64" color="warning" />
+                        </div>
+                        <v-text-field
+                            :model-value="suspendTarget?.usuario"
+                            label="Usuario"
+                            disabled
+                            variant="outlined"
+                            density="compact"
+                            class="mb-4"
+                        />
+                        <v-text-field
+                            :model-value="suspendTarget?.email"
+                            label="Correo electrónico"
+                            type="email"
+                            disabled
+                            variant="outlined"
+                            density="compact"
+                        />
+                    </v-container>
+                </template>
+                <template #footer>
+                    <div class="d-flex justify-end ga-2">
+                        <v-btn
+                            variant="outlined"
+                            @click="showSuspendModal = false"
+                            :disabled="suspending"
+                            class="text-none"
+                        >
+                            Cancelar
+                        </v-btn>
+                        <v-btn
+                            color="warning"
+                            variant="flat"
+                            @click="handleSuspendConfirm"
+                            :loading="suspending"
+                            class="text-none"
+                        >
+                            Suspender Ahora!
+                        </v-btn>
+                    </div>
+                </template>
+            </AppModal>
+        </v-container>
     </AuthenticatedLayout>
 </template>

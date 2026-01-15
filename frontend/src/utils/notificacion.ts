@@ -33,8 +33,3 @@ export function notificacion(message: string, options: NotificationOptions = {})
             notificationsStore.info(message, { title, duration });
     }
 }
-
-// Exponer globalmente para compatibilidad
-if (typeof window !== 'undefined') {
-    (window as any).notificacion = notificacion;
-}

@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTheme } from 'vuetify';
 import { useAuthStore } from '../../../stores/auth';
-import { mapTablerIconToMDI } from '../../../utils/iconMapper';
 
 interface TopNavItem {
     label: string;
@@ -41,15 +40,44 @@ const router = useRouter();
 const authStore = useAuthStore();
 const theme = useTheme();
 
-const isDark = computed(() => theme.current.value.dark);
+const isDark = computed(() => theme.current.value?.dark ?? false);
+
+// Cargar tema desde localStorage
+const loadThemeFromStorage = () => {
+    try {
+        const storedTheme = localStorage.getItem('app-theme');
+        if (storedTheme === 'dark' || storedTheme === 'light') {
+            theme.global.name.value = storedTheme;
+        }
+    } catch (error) {
+        console.warn('Error loading theme from localStorage:', error);
+    }
+};
+
+// Guardar tema en localStorage
+const saveThemeToStorage = (themeName: string) => {
+    try {
+        localStorage.setItem('app-theme', themeName);
+    } catch (error) {
+        console.warn('Error saving theme to localStorage:', error);
+    }
+};
 
 const toggleTheme = () => {
-    theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark';
+    const currentIsDark = theme.global.current.value?.dark ?? false;
+    const newTheme = currentIsDark ? 'light' : 'dark';
+    theme.global.name.value = newTheme;
+    saveThemeToStorage(newTheme);
 };
 
 const themeLabel = computed(() =>
     isDark.value ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'
 );
+
+// Cargar tema al montar el componente
+onMounted(() => {
+    loadThemeFromStorage();
+});
 
 const toggleDrawer = () => {
     emit('update:drawer', !props.drawer);
@@ -83,26 +111,7 @@ const userInitials = computed(() => {
             </slot>
         </v-toolbar-title>
 
-        <v-spacer />
-
-        <!-- Navegación superior (opcional, puede estar oculta en móvil) -->
-        <v-btn-toggle
-            v-if="nav && nav.length > 0"
-            variant="text"
-            density="compact"
-            class="d-none d-md-flex"
-        >
-            <v-btn
-                v-for="(item, index) in nav"
-                :key="`top-nav-${index}`"
-                :prepend-icon="item.icon ? mapTablerIconToMDI(item.icon) : undefined"
-                :to="item.href"
-                :active="item.active"
-                variant="text"
-            >
-                {{ item.label }}
-            </v-btn>
-        </v-btn-toggle>
+      
 
         <v-spacer />
 

@@ -16,7 +16,7 @@ import { RouterLink } from 'vue-router';
                     </RouterLink>
                 </div>
 
-                <v-card elevation="2">
+                 <v-card elevation="2">
                     <v-card-text class="pa-6">
                         <slot />
                     </v-card-text>

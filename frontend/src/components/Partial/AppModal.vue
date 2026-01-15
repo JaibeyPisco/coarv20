@@ -4,18 +4,8 @@ import { computed } from 'vue';
 const props = withDefaults(defineProps<{
     modelValue?: boolean;
     open?: boolean;
-
-const props = withDefaults(defineProps<{
-    modelValue?: boolean;
-    open?: boolean;
-    title: {
-        type: String;
-        default: '';
-    };
-    size: {
-        type: String;
-        default: 'md'; // sm, md, lg, xl, fullscreen
-    };
+    title?: string;
+    size?: 'sm' | 'md' | 'lg' | 'xl' | 'fullscreen';
     persistent?: boolean;
     scrollable?: boolean;
 }>(), {
@@ -58,17 +48,17 @@ const dialogModel = computed({
 const maxWidth = computed(() => {
     switch (props.size) {
         case 'sm':
-            return '420';
+            return '500';
         case 'md':
-            return '540';
+            return '600';
         case 'lg':
-            return '720';
+            return '800';
         case 'xl':
-            return '960';
+            return '1200';
         case 'fullscreen':
-            return '100%';
+            return undefined;
         default:
-            return '540';
+            return '600';
     }
 });
 
@@ -84,31 +74,40 @@ const fullscreen = computed(() => props.size === 'fullscreen');
         :scrollable="scrollable"
         transition="dialog-transition"
     >
-        <v-card>
-            <v-card-title v-if="title || $slots.header" class="d-flex align-center justify-space-between">
+        <v-card rounded="lg" elevation="2">
+            <!-- Header con título y botón cerrar -->
+            <v-card-title
+                v-if="title || $slots.header"
+                class="d-flex align-center justify-space-between pa-4"
+            >
                 <slot name="header">
-                    <span class="text-h6">{{ title }}</span>
+                    <span class="text-h6 font-weight-medium">{{ title }}</span>
                 </slot>
                 <v-btn
                     icon="mdi-close"
                     variant="text"
                     size="small"
                     @click="dialogModel = false"
+                    aria-label="Cerrar"
                 />
             </v-card-title>
 
             <v-divider v-if="title || $slots.header" />
 
-            <v-card-text>
+            <!-- Body con padding consistente -->
+            <v-card-text class="pa-6">
                 <slot name="body" />
             </v-card-text>
 
-            <v-card-actions v-if="$slots.footer">
+            <!-- Footer con botones alineados a la derecha -->
+            <template v-if="$slots.footer">
                 <v-divider />
-                <div class="d-flex justify-space-between w-100 pa-2">
-                    <slot name="footer" />
-                </div>
-            </v-card-actions>
+                <v-card-actions class="pa-4">
+                    <div class="d-flex justify-end ga-3 w-100">
+                        <slot name="footer" />
+                    </div>
+                </v-card-actions>
+            </template>
         </v-card>
     </v-dialog>
 </template>

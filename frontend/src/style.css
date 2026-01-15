@@ -245,61 +245,73 @@ body[data-bs-theme='dark'] aside.navbar.navbar-vertical.navbar-dark-neutral .nav
     color: #e5e5e5 !important;
 }
 
-/* Estilos personalizados del proyecto */
+/* Estilos personalizados del proyecto - Dropdowns estilo Vuetify */
 .actions-menu {
     position: relative;
     display: inline-flex;
-    gap: 2px;
+    gap: 4px;
+    align-items: center;
 }
 
 .actions-menu__toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
 }
 
 .actions-menu__dropdown {
     position: absolute;
     top: 100%;
-    right: 0;
-    min-width: 150px;
-    background: var(--tblr-dropdown-bg, var(--tblr-card-bg, #fff));
-    color: var(--tblr-dropdown-color, var(--tblr-body-color, #0f172a));
-    border: 1px solid rgba(15, 23, 42, 0.15);
-    border-radius: 0.5rem;
-    padding: 0.25rem 0;
-    margin-top: 0.2rem;
-    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2);
+    left: 0;
+    min-width: 200px;
+    background: rgb(var(--v-theme-surface));
+    color: rgb(var(--v-theme-on-surface));
+    border-radius: 4px;
+    padding: 4px 0;
+    margin-top: 4px;
+    box-shadow: 0px 2px 4px -1px rgba(0, 0, 0, 0.2), 0px 4px 5px 0px rgba(0, 0, 0, 0.14), 0px 1px 10px 0px rgba(0, 0, 0, 0.12);
     display: none;
-    z-index: 1055;
+    z-index: 2000;
+    overflow: hidden;
 }
 
 .actions-menu__dropdown.show {
     display: block;
 }
 
-.actions-menu__dropdown .dropdown-item {
+.actions-menu-item {
     width: 100%;
     background: transparent;
     border: 0;
-    padding: 0.45rem 1.1rem;
-    font-size: 0.85rem;
+    padding: 8px 16px;
+    font-size: 0.875rem;
     color: inherit;
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    justify-content: flex-start;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    min-height: 40px;
 }
 
-.actions-menu__dropdown .dropdown-item i {
-    font-size: 0.95rem;
-    line-height: 1;
+.actions-menu-item:hover {
+    background-color: rgba(var(--v-theme-on-surface), 0.08);
 }
 
-.actions-menu__dropdown .dropdown-item:hover {
-    background-color: rgba(15, 23, 42, 0.05);
-    color: inherit;
+.actions-menu-item.text-error {
+    color: rgb(var(--v-theme-error));
+}
+
+.actions-menu-item.text-error:hover {
+    background-color: rgba(var(--v-theme-error), 0.1);
+}
+
+.actions-menu-item .v-list-item__prepend {
+    margin-right: 12px;
+}
+
+.actions-menu-item .v-list-item-title {
+    font-size: 0.875rem;
+    line-height: 1.5;
 }
 
 .pull-left {
@@ -577,29 +589,32 @@ body[data-bs-theme='dark'] aside.navbar.navbar-vertical.navbar-dark-neutral .nav
     background-color: rgba(23, 23, 23, 0.8) !important;
 }
 
-[data-bs-theme='dark'] .actions-menu__dropdown {
-    background: var(--tblr-dropdown-bg, #262626) !important;
-    color: var(--tblr-dropdown-color, rgba(229, 229, 229, 0.9)) !important;
-    border-color: var(--tblr-border-color, rgba(229, 229, 229, 0.12)) !important;
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+/* Estilos dark mode para dropdowns estilo Vuetify */
+[data-bs-theme='dark'] .actions-menu__dropdown,
+.v-theme--dark .actions-menu__dropdown {
+    background: rgb(var(--v-theme-surface)) !important;
+    color: rgb(var(--v-theme-on-surface)) !important;
+    box-shadow: 0px 2px 4px -1px rgba(0, 0, 0, 0.4), 0px 4px 5px 0px rgba(0, 0, 0, 0.3), 0px 1px 10px 0px rgba(0, 0, 0, 0.3) !important;
 }
 
-[data-bs-theme='dark'] .actions-menu__dropdown .dropdown-item {
-    color: rgba(229, 229, 229, 0.85) !important;
+[data-bs-theme='dark'] .actions-menu-item,
+.v-theme--dark .actions-menu-item {
+    color: rgb(var(--v-theme-on-surface)) !important;
 }
 
-[data-bs-theme='dark'] .actions-menu__dropdown .dropdown-item:hover {
-    background-color: rgba(229, 229, 229, 0.1) !important;
-    color: rgba(229, 229, 229, 1) !important;
+[data-bs-theme='dark'] .actions-menu-item:hover,
+.v-theme--dark .actions-menu-item:hover {
+    background-color: rgba(var(--v-theme-on-surface), 0.1) !important;
 }
 
-[data-bs-theme='dark'] .actions-menu__dropdown .dropdown-item.text-danger {
-    color: #ff6b6b !important;
+[data-bs-theme='dark'] .actions-menu-item.text-error,
+.v-theme--dark .actions-menu-item.text-error {
+    color: rgb(var(--v-theme-error)) !important;
 }
 
-[data-bs-theme='dark'] .actions-menu__dropdown .dropdown-item.text-danger:hover {
-    background-color: rgba(255, 107, 107, 0.1) !important;
-    color: #ff5252 !important;
+[data-bs-theme='dark'] .actions-menu-item.text-error:hover,
+.v-theme--dark .actions-menu-item.text-error:hover {
+    background-color: rgba(var(--v-theme-error), 0.15) !important;
 }
 
 /* Estilos adicionales para elementos dentro de las tablas en modo dark */

@@ -37,20 +37,20 @@ const emit = defineEmits<{
 }>();
 
 const gradoInstruccionOptions = [
-    { value: '', label: 'Seleccione...' },
-    { value: 'SIN_INSTRUCCION', label: 'Sin Instrucción' },
-    { value: 'PRIMARIA_INCOMPLETA', label: 'Primaria Incompleta' },
-    { value: 'PRIMARIA_COMPLETA', label: 'Primaria Completa' },
-    { value: 'SECUNDARIA_INCOMPLETA', label: 'Secundaria Incompleta' },
-    { value: 'SECUNDARIA_COMPLETA', label: 'Secundaria Completa' },
-    { value: 'TECNICO_INCOMPLETO', label: 'Técnico Incompleto' },
-    { value: 'TECNICO_COMPLETO', label: 'Técnico Completo' },
-    { value: 'SUPERIOR_NO_UNIVERSITARIA_INCOMPLETA', label: 'Superior No Universitaria Incompleta' },
-    { value: 'SUPERIOR_NO_UNIVERSITARIA_COMPLETA', label: 'Superior No Universitaria Completa' },
-    { value: 'UNIVERSITARIA_INCOMPLETA', label: 'Universitaria Incompleta' },
-    { value: 'UNIVERSITARIA_COMPLETA', label: 'Universitaria Completa' },
-    { value: 'POSTGRADO_MAESTRIA', label: 'Postgrado (Maestría)' },
-    { value: 'POSTGRADO_DOCTORADO', label: 'Postgrado (Doctorado)' },
+    { title: 'Seleccione...', value: '' },
+    { title: 'Sin Instrucción', value: 'SIN_INSTRUCCION' },
+    { title: 'Primaria Incompleta', value: 'PRIMARIA_INCOMPLETA' },
+    { title: 'Primaria Completa', value: 'PRIMARIA_COMPLETA' },
+    { title: 'Secundaria Incompleta', value: 'SECUNDARIA_INCOMPLETA' },
+    { title: 'Secundaria Completa', value: 'SECUNDARIA_COMPLETA' },
+    { title: 'Técnico Incompleto', value: 'TECNICO_INCOMPLETO' },
+    { title: 'Técnico Completo', value: 'TECNICO_COMPLETO' },
+    { title: 'Superior No Universitaria Incompleta', value: 'SUPERIOR_NO_UNIVERSITARIA_INCOMPLETA' },
+    { title: 'Superior No Universitaria Completa', value: 'SUPERIOR_NO_UNIVERSITARIA_COMPLETA' },
+    { title: 'Universitaria Incompleta', value: 'UNIVERSITARIA_INCOMPLETA' },
+    { title: 'Universitaria Completa', value: 'UNIVERSITARIA_COMPLETA' },
+    { title: 'Postgrado (Maestría)', value: 'POSTGRADO_MAESTRIA' },
+    { title: 'Postgrado (Doctorado)', value: 'POSTGRADO_DOCTORADO' },
 ];
 
 const tipoFamiliaOptions = [
@@ -62,496 +62,344 @@ const tipoFamiliaOptions = [
 </script>
 
 <template>
-    <div class="row">
-        <!-- DATOS MADRE -->
-        <div class="col-md-6">
-            <div class="card border-primary border-top border-3">
-                <div class="card-body">
-                    <span style="font-size: 18px" class="mb-3"><b>Datos de la madre</b></span>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group mt-3">
-                                <div class="form-check form-switch">
-                                    <input
-                                        id="madre_viva"
-                                        :checked="madreForm.vive"
-                                        class="form-check-input"
-                                        name="madre_viva"
-                                        type="checkbox"
-                                        @change="emit('update:madreForm', { ...madreForm, vive: ($event.target as HTMLInputElement).checked })"
-                                    />
-                                    <label for="madre_viva" class="form-label form-check-label"
-                                        >¿La madre está viva?</label
-                                    >
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group mt-3">
-                                <div class="form-check form-switch">
-                                    <input
-                                        id="madre_con_estudiante"
-                                        :checked="madreForm.vive_con_estudiante"
-                                        class="form-check-input"
-                                        name="madre_con_estudiante"
-                                        type="checkbox"
-                                        @change="emit('update:madreForm', { ...madreForm, vive_con_estudiante: ($event.target as HTMLInputElement).checked })"
-                                    />
-                                    <label for="madre_con_estudiante" class="form-label form-check-label"
-                                        >¿La madre vive con el estudiante?</label
-                                    >
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group mt-2 mb-3">
-                                <label for="apellidos_madre" class="form-label"
-                                    >Apellidos y de la madre<span class="text-red"></span></label
-                                >
-                                <input
-                                    id="apellidos_madre"
-                                    :value="madreForm.apellidos"
-                                    type="text"
-                                    name="apellidos_madre"
-                                    class="form-control form-control-sm"
-                                    autocomplete="off"
-                                    @input="emit('update:madreForm', { ...madreForm, apellidos: ($event.target as HTMLInputElement).value })"
+    <v-container fluid class="pa-4">
+        <v-row>
+            <!-- DATOS DE LA MADRE -->
+            <v-col cols="12" md="6">
+                <v-card class="mb-4" rounded="lg" elevation="1" style="border-top: 3px solid rgb(var(--v-theme-primary)) !important;">
+                    <v-card-title class="text-h6 font-weight-bold pa-4 pb-2">
+                        <v-icon class="mr-2">mdi-account-heart</v-icon>
+                        Datos de la Madre
+                    </v-card-title>
+                    <v-card-text class="pa-4">
+                        <!-- Estado y convivencia -->
+                        <v-row class="mb-2">
+                            <v-col cols="12" md="6">
+                                <v-switch
+                                    :model-value="madreForm.vive"
+                                    label="¿La madre está viva?"
+                                    color="primary"
+                                    hide-details
+                                    @update:model-value="emit('update:madreForm', { ...madreForm, vive: $event })"
                                 />
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group mt-2 mb-3">
-                                <label for="nombres_madre" class="form-label"
-                                    >Nombres de la madre<span class="text-red"></span></label
-                                >
-                                <input
-                                    id="nombres_madre"
-                                    :value="madreForm.nombres"
-                                    type="text"
-                                    name="nombres_madre"
-                                    class="form-control form-control-sm"
-                                    autocomplete="off"
-                                    @input="emit('update:madreForm', { ...madreForm, nombres: ($event.target as HTMLInputElement).value })"
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-switch
+                                    :model-value="madreForm.vive_con_estudiante"
+                                    label="¿Vive con el estudiante?"
+                                    color="primary"
+                                    hide-details
+                                    @update:model-value="emit('update:madreForm', { ...madreForm, vive_con_estudiante: $event })"
                                 />
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label for="dni_madre" class="form-label"
-                                            >N° de dni de la madre <span class="text-red"></span></label
-                                        >
-                                        <input
-                                            id="dni_madre"
-                                            :value="madreForm.dni"
-                                            type="number"
-                                            name="dni_madre"
-                                            class="form-control form-control-sm"
-                                            autocomplete="off"
-                                            @input="emit('update:madreForm', { ...madreForm, dni: ($event.target as HTMLInputElement).value })"
-                                        />
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label for="grado_instruccion_madre" class="form-label"
-                                            >Grado de instrucción de la madre</label
-                                        >
-                                        <select
-                                            :value="madreForm.grado_instruccion"
-                                            name="grado_instruccion_madre"
-                                            class="form-control form-select-sm"
-                                            @change="emit('update:madreForm', { ...madreForm, grado_instruccion: ($event.target as HTMLSelectElement).value })"
-                                        >
-                                            <option
-                                                v-for="option in gradoInstruccionOptions"
-                                                :key="option.value"
-                                                :value="option.value"
-                                            >
-                                                {{ option.label }}
-                                            </option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label for="num_celular_madre" class="form-label"
-                                            >N° de teléfono celular de la madre</label
-                                        >
-                                        <input
-                                            id="num_celular_madre"
-                                            :value="madreForm.telefono"
-                                            type="text"
-                                            name="num_celular_madre"
-                                            class="form-control form-control-sm"
-                                            autocomplete="off"
-                                            @input="emit('update:madreForm', { ...madreForm, telefono: ($event.target as HTMLInputElement).value })"
-                                        />
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label for="correo_electronico_madre" class="form-label"
-                                            >Correo electrónico de la madre</label
-                                        >
-                                        <input
-                                            id="correo_electronico_madre"
-                                            :value="madreForm.correo_electronico"
-                                            type="text"
-                                            name="correo_electronico_madre"
-                                            class="form-control form-control-sm"
-                                            autocomplete="off"
-                                            @input="emit('update:madreForm', { ...madreForm, correo_electronico: ($event.target as HTMLInputElement).value })"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="form-group mb-3">
-                                <label for="ocupacion_actual_madre" class="form-label"
-                                    >Ocupación actual de la madre</label
-                                >
-                                <input
-                                    id="ocupacion_actual_madre"
-                                    :value="madreForm.ocupacion_actual"
-                                    type="text"
-                                    name="ocupacion_actual_madre"
-                                    class="form-control form-control-sm"
-                                    autocomplete="off"
-                                    @input="emit('update:madreForm', { ...madreForm, ocupacion_actual: ($event.target as HTMLInputElement).value })"
-                                />
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="form-group">
-                                <label for="motivo_madre_no_vive_con_estudiante" class="form-label"
-                                    >Motivo por el cual la madre no vive con el estudiante</label
-                                >
-                                <textarea
-                                    id="motivo_madre_no_vive_con_estudiante"
-                                    :value="madreForm.motivo_no_vive_con_estudiante"
-                                    name="motivo_madre_no_vive_con_estudiante"
-                                    class="form-control form-control-sm"
-                                    autocomplete="off"
-                                    @input="emit('update:madreForm', { ...madreForm, motivo_no_vive_con_estudiante: ($event.target as HTMLTextAreaElement).value })"
-                                ></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                            </v-col>
+                        </v-row>
 
-        <!-- DATOS PADRE -->
-        <div class="col-md-6">
-            <div class="card border-primary border-top border-3">
-                <div class="card-body">
-                    <span style="font-size: 18px" class="mb-3"><b>Datos del padre</b></span>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group mt-3">
-                                <div class="form-check form-switch">
-                                    <input
-                                        id="padre_vivo"
-                                        :checked="padreForm.vive"
-                                        class="form-check-input"
-                                        name="padre_vivo"
-                                        type="checkbox"
-                                        @change="emit('update:padreForm', { ...padreForm, vive: ($event.target as HTMLInputElement).checked })"
-                                    />
-                                    <label for="padre_vivo" class="form-label form-check-label"
-                                        >¿El padre está vivo?</label
-                                    >
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group mt-3">
-                                <div class="form-check form-switch">
-                                    <input
-                                        id="padre_con_estudiante"
-                                        :checked="padreForm.vive_con_estudiante"
-                                        class="form-check-input"
-                                        name="padre_con_estudiante"
-                                        type="checkbox"
-                                        @change="emit('update:padreForm', { ...padreForm, vive_con_estudiante: ($event.target as HTMLInputElement).checked })"
-                                    />
-                                    <label for="padre_con_estudiante" class="form-label form-check-label"
-                                        >¿El padre vive con el estudiante?</label
-                                    >
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group mt-2 mb-3">
-                                <label for="apellidos_padre" class="form-label"
-                                    >Apellidos del padre<span class="text-red"></span></label
-                                >
-                                <input
-                                    id="apellidos_padre"
-                                    :value="padreForm.apellidos"
-                                    type="text"
-                                    name="apellidos_padre"
-                                    class="form-control form-control-sm"
-                                    autocomplete="off"
-                                    @input="emit('update:padreForm', { ...padreForm, apellidos: ($event.target as HTMLInputElement).value })"
-                                />
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group mt-2 mb-3">
-                                <label for="nombres_padre" class="form-label"
-                                    >Nombres del padre<span class="text-red"></span></label
-                                >
-                                <input
-                                    id="nombres_padre"
-                                    :value="padreForm.nombres"
-                                    type="text"
-                                    name="nombres_padre"
-                                    class="form-control form-control-sm"
-                                    autocomplete="off"
-                                    @input="emit('update:padreForm', { ...padreForm, nombres: ($event.target as HTMLInputElement).value })"
-                                />
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label for="dni_padre" class="form-label"
-                                            >N° de dni del padre <span class="text-red"></span></label
-                                        >
-                                        <input
-                                            id="dni_padre"
-                                            :value="padreForm.dni"
-                                            type="number"
-                                            name="dni_padre"
-                                            class="form-control form-control-sm"
-                                            autocomplete="off"
-                                            @input="emit('update:padreForm', { ...padreForm, dni: ($event.target as HTMLInputElement).value })"
-                                        />
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label for="grado_instruccion_padre" class="form-label"
-                                            >Grado de instrucción del padre</label
-                                        >
-                                        <select
-                                            :value="padreForm.grado_instruccion"
-                                            name="grado_instruccion_padre"
-                                            class="form-control form-select-sm"
-                                            @change="emit('update:padreForm', { ...padreForm, grado_instruccion: ($event.target as HTMLSelectElement).value })"
-                                        >
-                                            <option
-                                                v-for="option in gradoInstruccionOptions"
-                                                :key="option.value"
-                                                :value="option.value"
-                                            >
-                                                {{ option.label }}
-                                            </option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label for="num_celular_padre" class="form-label"
-                                            >N° de teléfono celular del padre</label
-                                        >
-                                        <input
-                                            id="num_celular_padre"
-                                            :value="padreForm.telefono"
-                                            type="text"
-                                            name="num_celular_padre"
-                                            class="form-control form-control-sm"
-                                            autocomplete="off"
-                                            @input="emit('update:padreForm', { ...padreForm, telefono: ($event.target as HTMLInputElement).value })"
-                                        />
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label for="correo_electronico_padre" class="form-label"
-                                            >Correo electrónico del padre</label
-                                        >
-                                        <input
-                                            id="correo_electronico_padre"
-                                            :value="padreForm.correo_electronico"
-                                            type="text"
-                                            name="correo_electronico_padre"
-                                            class="form-control form-control-sm"
-                                            autocomplete="off"
-                                            @input="emit('update:padreForm', { ...padreForm, correo_electronico: ($event.target as HTMLInputElement).value })"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="form-group mb-3">
-                                <label for="ocupacion_actual_padre" class="form-label"
-                                    >Ocupación actual del padre</label
-                                >
-                                <input
-                                    id="ocupacion_actual_padre"
-                                    :value="padreForm.ocupacion_actual"
-                                    type="text"
-                                    name="ocupacion_actual_padre"
-                                    class="form-control form-control-sm"
-                                    autocomplete="off"
-                                    @input="emit('update:padreForm', { ...padreForm, ocupacion_actual: ($event.target as HTMLInputElement).value })"
-                                />
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="form-group">
-                                <label for="motivo_padre_no_vive_con_estudiante" class="form-label"
-                                    >Motivo por el cual el padre no vive con el estudiante</label
-                                >
-                                <textarea
-                                    id="motivo_padre_no_vive_con_estudiante"
-                                    :value="padreForm.motivo_no_vive_con_estudiante"
-                                    name="motivo_padre_no_vive_con_estudiante"
-                                    class="form-control form-control-sm"
-                                    autocomplete="off"
-                                    @input="emit('update:padreForm', { ...padreForm, motivo_no_vive_con_estudiante: ($event.target as HTMLTextAreaElement).value })"
-                                ></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                        <v-divider class="my-4" />
 
-        <!-- DATOS APODERADO ROL PADRE/MADRE -->
-        <div class="col-md-12">
-            <div class="card border-primary border-top border-3">
-                <div class="card-body">
-                    <span style="font-size: 18px" class="mb-3"
-                        ><b>Datos del apoderado que cumple el rol de padre o madre</b></span
-                    >
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="form-group mt-3 mb-3">
-                                <label for="parentesco_con_apoderado" class="form-label"
-                                    >Parentesco con tu apoderado<span class="text-red"></span></label
-                                >
-                                <input
-                                    id="parentesco_con_apoderado"
-                                    :value="apoderadoRolPadreForm.parentesco_estudiante"
-                                    type="text"
-                                    name="parentesco_con_apoderado"
-                                    class="form-control form-control-sm"
-                                    autocomplete="off"
-                                    @input="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, parentesco_estudiante: ($event.target as HTMLInputElement).value })"
+                        <!-- Información Personal -->
+                        <div class="text-subtitle-2 font-weight-medium mb-3 text-primary">Información Personal</div>
+                        <v-row>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="madreForm.apellidos"
+                                    label="Apellidos"
+                                    variant="outlined"
+                                    density="compact"
+                                    @update:model-value="emit('update:madreForm', { ...madreForm, apellidos: $event })"
                                 />
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="form-group mb-3">
-                                <label for="apellidos_apoderado" class="form-label"
-                                    >Apellidos del apoderado (a) <span class="text-red"></span></label
-                                >
-                                <input
-                                    id="apellidos_apoderado"
-                                    :value="apoderadoRolPadreForm.apellidos"
-                                    type="text"
-                                    name="apellidos_apoderado"
-                                    class="form-control form-control-sm"
-                                    autocomplete="off"
-                                    @input="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, apellidos: ($event.target as HTMLInputElement).value })"
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="madreForm.nombres"
+                                    label="Nombres"
+                                    variant="outlined"
+                                    density="compact"
+                                    @update:model-value="emit('update:madreForm', { ...madreForm, nombres: $event })"
                                 />
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="form-group mb-3">
-                                <label for="nombres_apoderado" class="form-label"
-                                    >Nombres del apoderado (a) <span class="text-red"></span></label
-                                >
-                                <input
-                                    id="nombres_apoderado"
-                                    :value="apoderadoRolPadreForm.nombres"
-                                    type="text"
-                                    name="nombres_apoderado"
-                                    class="form-control form-control-sm"
-                                    autocomplete="off"
-                                    @input="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, nombres: ($event.target as HTMLInputElement).value })"
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="madreForm.dni"
+                                    label="N° de DNI"
+                                    variant="outlined"
+                                    density="compact"
+                                    type="number"
+                                    @update:model-value="emit('update:madreForm', { ...madreForm, dni: $event })"
                                 />
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label for="dni_apoderado" class="form-label"
-                                            >N° de dni del apoderado <span class="text-red"></span></label
-                                        >
-                                        <input
-                                            id="dni_apoderado"
-                                            :value="apoderadoRolPadreForm.dni"
-                                            type="text"
-                                            name="dni_apoderado"
-                                            class="form-control form-control-sm"
-                                            autocomplete="off"
-                                            @input="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, dni: ($event.target as HTMLInputElement).value })"
-                                        />
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label for="num_celular_apoderado" class="form-label"
-                                            >N° de teléfono celular del apoderado</label
-                                        >
-                                        <input
-                                            id="num_celular_apoderado"
-                                            :value="apoderadoRolPadreForm.telefono"
-                                            type="text"
-                                            name="num_celular_apoderado"
-                                            class="form-control form-control-sm"
-                                            autocomplete="off"
-                                            @input="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, telefono: ($event.target as HTMLInputElement).value })"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="form-group mb-3">
-                                <label for="tipo_familia" class="form-label">Elige tu tipo de familia</label>
-                                <input
-                                    id="tipo_familia"
-                                    :value="apoderadoRolPadreForm.tipo_familia"
-                                    class="form-control form-control-sm"
-                                    list="datalistOptions"
-                                    name="tipo_familia"
-                                    placeholder="Elige tu tipo de familia..."
-                                    @input="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, tipo_familia: ($event.target as HTMLInputElement).value })"
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-select
+                                    :model-value="madreForm.grado_instruccion"
+                                    label="Grado de Instrucción"
+                                    variant="outlined"
+                                    density="compact"
+                                    :items="gradoInstruccionOptions"
+                                    @update:model-value="emit('update:madreForm', { ...madreForm, grado_instruccion: $event })"
                                 />
-                                <datalist id="datalistOptions">
-                                    <option
-                                        v-for="option in tipoFamiliaOptions"
-                                        :key="option"
-                                        :value="option"
-                                    ></option>
-                                </datalist>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                            </v-col>
+                        </v-row>
+
+                        <v-divider class="my-4" />
+
+                        <!-- Información de Contacto -->
+                        <div class="text-subtitle-2 font-weight-medium mb-3 text-primary">Información de Contacto</div>
+                        <v-row>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="madreForm.telefono"
+                                    label="N° de Teléfono Celular"
+                                    variant="outlined"
+                                    density="compact"
+                                    type="tel"
+                                    @update:model-value="emit('update:madreForm', { ...madreForm, telefono: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="madreForm.correo_electronico"
+                                    label="Correo Electrónico"
+                                    variant="outlined"
+                                    density="compact"
+                                    type="email"
+                                    @update:model-value="emit('update:madreForm', { ...madreForm, correo_electronico: $event })"
+                                />
+                            </v-col>
+                        </v-row>
+
+                        <v-divider class="my-4" />
+
+                        <!-- Información Profesional -->
+                        <div class="text-subtitle-2 font-weight-medium mb-3 text-primary">Información Profesional</div>
+                        <v-row>
+                            <v-col cols="12">
+                                <v-text-field
+                                    :model-value="madreForm.ocupacion_actual"
+                                    label="Ocupación Actual"
+                                    variant="outlined"
+                                    density="compact"
+                                    @update:model-value="emit('update:madreForm', { ...madreForm, ocupacion_actual: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12">
+                                <v-textarea
+                                    :model-value="madreForm.motivo_no_vive_con_estudiante"
+                                    label="Motivo por el cual no vive con el estudiante"
+                                    variant="outlined"
+                                    density="compact"
+                                    rows="2"
+                                    :disabled="madreForm.vive_con_estudiante"
+                                    @update:model-value="emit('update:madreForm', { ...madreForm, motivo_no_vive_con_estudiante: $event })"
+                                />
+                            </v-col>
+                        </v-row>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+
+            <!-- DATOS DEL PADRE -->
+            <v-col cols="12" md="6">
+                <v-card class="mb-4" rounded="lg" elevation="1" style="border-top: 3px solid rgb(var(--v-theme-primary)) !important;">
+                    <v-card-title class="text-h6 font-weight-bold pa-4 pb-2">
+                        <v-icon class="mr-2">mdi-account</v-icon>
+                        Datos del Padre
+                    </v-card-title>
+                    <v-card-text class="pa-4">
+                        <!-- Estado y convivencia -->
+                        <v-row class="mb-2">
+                            <v-col cols="12" md="6">
+                                <v-switch
+                                    :model-value="padreForm.vive"
+                                    label="¿El padre está vivo?"
+                                    color="primary"
+                                    hide-details
+                                    @update:model-value="emit('update:padreForm', { ...padreForm, vive: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-switch
+                                    :model-value="padreForm.vive_con_estudiante"
+                                    label="¿Vive con el estudiante?"
+                                    color="primary"
+                                    hide-details
+                                    @update:model-value="emit('update:padreForm', { ...padreForm, vive_con_estudiante: $event })"
+                                />
+                            </v-col>
+                        </v-row>
+
+                        <v-divider class="my-4" />
+
+                        <!-- Información Personal -->
+                        <div class="text-subtitle-2 font-weight-medium mb-3 text-primary">Información Personal</div>
+                        <v-row>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="padreForm.apellidos"
+                                    label="Apellidos"
+                                    variant="outlined"
+                                    density="compact"
+                                    @update:model-value="emit('update:padreForm', { ...padreForm, apellidos: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="padreForm.nombres"
+                                    label="Nombres"
+                                    variant="outlined"
+                                    density="compact"
+                                    @update:model-value="emit('update:padreForm', { ...padreForm, nombres: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="padreForm.dni"
+                                    label="N° de DNI"
+                                    variant="outlined"
+                                    density="compact"
+                                    type="number"
+                                    @update:model-value="emit('update:padreForm', { ...padreForm, dni: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-select
+                                    :model-value="padreForm.grado_instruccion"
+                                    label="Grado de Instrucción"
+                                    variant="outlined"
+                                    density="compact"
+                                    :items="gradoInstruccionOptions"
+                                    @update:model-value="emit('update:padreForm', { ...padreForm, grado_instruccion: $event })"
+                                />
+                            </v-col>
+                        </v-row>
+
+                        <v-divider class="my-4" />
+
+                        <!-- Información de Contacto -->
+                        <div class="text-subtitle-2 font-weight-medium mb-3 text-primary">Información de Contacto</div>
+                        <v-row>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="padreForm.telefono"
+                                    label="N° de Teléfono Celular"
+                                    variant="outlined"
+                                    density="compact"
+                                    type="tel"
+                                    @update:model-value="emit('update:padreForm', { ...padreForm, telefono: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="padreForm.correo_electronico"
+                                    label="Correo Electrónico"
+                                    variant="outlined"
+                                    density="compact"
+                                    type="email"
+                                    @update:model-value="emit('update:padreForm', { ...padreForm, correo_electronico: $event })"
+                                />
+                            </v-col>
+                        </v-row>
+
+                        <v-divider class="my-4" />
+
+                        <!-- Información Profesional -->
+                        <div class="text-subtitle-2 font-weight-medium mb-3 text-primary">Información Profesional</div>
+                        <v-row>
+                            <v-col cols="12">
+                                <v-text-field
+                                    :model-value="padreForm.ocupacion_actual"
+                                    label="Ocupación Actual"
+                                    variant="outlined"
+                                    density="compact"
+                                    @update:model-value="emit('update:padreForm', { ...padreForm, ocupacion_actual: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12">
+                                <v-textarea
+                                    :model-value="padreForm.motivo_no_vive_con_estudiante"
+                                    label="Motivo por el cual no vive con el estudiante"
+                                    variant="outlined"
+                                    density="compact"
+                                    rows="2"
+                                    :disabled="padreForm.vive_con_estudiante"
+                                    @update:model-value="emit('update:padreForm', { ...padreForm, motivo_no_vive_con_estudiante: $event })"
+                                />
+                            </v-col>
+                        </v-row>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+        </v-row>
+
+        <!-- DATOS DEL APODERADO QUE CUMPLE EL ROL DE PADRE O MADRE -->
+        <v-row>
+            <v-col cols="12">
+                <v-card class="mb-4" rounded="lg" elevation="1" style="border-top: 3px solid rgb(var(--v-theme-primary)) !important;">
+                    <v-card-title class="text-h6 font-weight-bold pa-4 pb-2">
+                        <v-icon class="mr-2">mdi-account-supervisor-circle</v-icon>
+                        Datos del Apoderado que cumple el rol de Padre o Madre
+                    </v-card-title>
+                    <v-card-text class="pa-4">
+                        <v-row>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="apoderadoRolPadreForm.parentesco_estudiante"
+                                    label="Parentesco con el estudiante"
+                                    variant="outlined"
+                                    density="compact"
+                                    @update:model-value="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, parentesco_estudiante: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-autocomplete
+                                    :model-value="apoderadoRolPadreForm.tipo_familia"
+                                    label="Tipo de Familia"
+                                    variant="outlined"
+                                    density="compact"
+                                    :items="tipoFamiliaOptions"
+                                    @update:model-value="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, tipo_familia: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="apoderadoRolPadreForm.apellidos"
+                                    label="Apellidos"
+                                    variant="outlined"
+                                    density="compact"
+                                    @update:model-value="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, apellidos: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="apoderadoRolPadreForm.nombres"
+                                    label="Nombres"
+                                    variant="outlined"
+                                    density="compact"
+                                    @update:model-value="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, nombres: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="apoderadoRolPadreForm.dni"
+                                    label="N° de DNI"
+                                    variant="outlined"
+                                    density="compact"
+                                    type="number"
+                                    @update:model-value="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, dni: $event })"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    :model-value="apoderadoRolPadreForm.telefono"
+                                    label="N° de Teléfono Celular"
+                                    variant="outlined"
+                                    density="compact"
+                                    type="tel"
+                                    @update:model-value="emit('update:apoderadoRolPadreForm', { ...apoderadoRolPadreForm, telefono: $event })"
+                                />
+                            </v-col>
+                        </v-row>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+        </v-row>
+    </v-container>
 </template>
-
-
-

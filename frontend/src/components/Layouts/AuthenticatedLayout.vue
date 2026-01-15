@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { useDisplay } from 'vuetify';
 import { useAuthStore } from '../../stores/auth';
 import ApplicationLogo from '../ApplicationLogo.vue';
 import AppSidebar from './Partial/AppSidebar.vue';
@@ -14,7 +15,8 @@ const authStore = useAuthStore();
 // Esperar a que la autenticación esté lista antes de renderizar el contenido
 const { isReady } = useAuthReady();
 
-const drawer = ref(false);
+const { mobile } = useDisplay();
+const drawer = ref(!mobile.value);
 const user = computed(() => authStore.user);
 const { filtrarItemsMenu } = useMenuPermissions(user);
 
@@ -175,7 +177,7 @@ const companyDisplayName = computed(() => {
 </script>
 
 <template>
-    <!-- Mostrar loader mientras se verifica la autenticación -->
+        <!-- Mostrar loader mientras se verifica la autenticación -->
     <v-container v-if="!isReady" fluid class="fill-height">
         <v-row align="center" justify="center">
             <v-col cols="12" sm="8" md="6" lg="4">
@@ -195,24 +197,24 @@ const companyDisplayName = computed(() => {
         </v-row>
     </v-container>
 
-    <!-- Contenido principal solo se muestra cuando la autenticación está lista -->
-    <template v-else>
+        <!-- Contenido principal solo se muestra cuando la autenticación está lista -->
+        <template v-else>
         <AppSidebar :items="sidebarItems" v-model:drawer="drawer">
-            <template #brand>
-                <router-link
-                    to="/dashboard"
+                <template #brand>
+                    <router-link
+                        to="/dashboard"
                     class="text-decoration-none d-flex align-center justify-center pa-2"
-                >
+                        >
                     <v-avatar v-if="company.logo_url" size="40">
                         <v-img :src="company.logo_url" alt="Logo empresa" />
                     </v-avatar>
-                    <ApplicationLogo
-                        v-else
-                        style="width: 40px; height: 40px"
-                    />
-                </router-link>
-            </template>
-        </AppSidebar>
+                            <ApplicationLogo
+                                v-else
+                                style="width: 40px; height: 40px"
+                            />
+                    </router-link>
+                </template>
+            </AppSidebar>
 
         <AppTopbar
             :nav="topNavItems"
@@ -221,23 +223,23 @@ const companyDisplayName = computed(() => {
             :drawer="drawer"
             @update:drawer="drawer = $event"
         >
-            <template #brand>
+                    <template #brand>
                 <div class="d-flex align-center">
                     <span class="text-body-2 font-weight-semibold">
-                        {{ companyDisplayName }}
+                                {{ companyDisplayName }}
                     </span>
-                </div>
-            </template>
-        </AppTopbar>
+                        </div>
+                    </template>
+                </AppTopbar>
 
         <v-main>
             <v-container v-if="$slots.header" fluid class="pa-4">
-                <slot name="header" />
+                        <slot name="header" />
             </v-container>
 
             <v-container fluid>
-                <slot />
+                        <slot />
             </v-container>
         </v-main>
-    </template>
+        </template>
 </template>

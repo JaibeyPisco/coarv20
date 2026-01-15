@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { notificacion } from '@/utils/notificacion';
+import { useErrorHandler } from './useErrorHandler';
 
 /**
  * Configuración para el composable useCrudModal
@@ -67,6 +68,8 @@ export interface CrudModalConfig<T> {
  * @public
  */
 export function useCrudModal<T extends { id: number }>(config: CrudModalConfig<T>) {
+    const { handleApiError, handleValidationError } = useErrorHandler();
+    
     const showSaveModal = ref(false);
     const showDeleteModal = ref(false);
     const editingId = ref<number | null>(null);
@@ -141,16 +144,17 @@ export function useCrudModal<T extends { id: number }>(config: CrudModalConfig<T
             }
             
             await reloadTable();
-        } catch (error: any) {
-            if (error.response?.data?.errors) {
-                const errors = error.response.data.errors;
-                const firstError = Object.values(errors)[0] as string[];
-                const message = firstError?.[0] || 'Error de validación';
-                notificacion(message, { type: 'danger', title: 'Validación' });
+        } catch (error: unknown) {
+            const errorResponse = error as { response?: { data?: { errors?: Record<string, string[]> } } };
+            
+            if (errorResponse.response?.data?.errors) {
+                handleValidationError(error, {
+                    customMessage: `Ocurrió un inconveniente al guardar el registro.`,
+                });
             } else {
-                const message = error.response?.data?.message || 
-                    `Ocurrió un inconveniente al guardar el registro.`;
-                notificacion(message, { type: 'danger', title: 'Error' });
+                handleApiError(error, {
+                    customMessage: `Ocurrió un inconveniente al guardar el registro.`,
+                });
             }
         } finally {
             saving.value = false;
@@ -177,10 +181,10 @@ export function useCrudModal<T extends { id: number }>(config: CrudModalConfig<T
             notificacion(`${config.entityName} eliminado correctamente.`, { type: 'success' });
             closeDeleteModal();
             await reloadTable();
-        } catch (error: any) {
-            const message = error.response?.data?.message || 
-                'No fue posible eliminar el registro.';
-            notificacion(message, { type: 'danger', title: 'Error' });
+        } catch (error: unknown) {
+            handleApiError(error, {
+                customMessage: 'No fue posible eliminar el registro.',
+            });
         } finally {
             deleting.value = false;
         }

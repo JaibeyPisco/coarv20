@@ -5,43 +5,29 @@ import {
     reactive,
     computed,
     onMounted,
-    onBeforeUnmount,
-    watch,
-    nextTick,
 } from 'vue';
 import apiClient from '@/api/axios';
-// @ts-expect-error -- tabulator-tables no proporciona tipos ES module
-import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import * as XLSX from 'xlsx';
 import type { Estudiante } from '@/types/configuracion';
 import AppModal from '@/components/Partial/AppModal.vue';
-import TableCard from '@/components/Table/TableCard.vue';
+import VDataTableCard from '@/components/Table/VDataTableCard.vue';
+import { useVuetifyTable } from '@/composables/useVuetifyTable';
 import { notificacion } from '@/utils/notificacion';
 import EstudianteForm from './EstudianteForm.vue';
 import PadresForm from './PadresForm.vue';
 import ApoderadosForm from './ApoderadosForm.vue';
 import ImportarEstudianteModal from './ImportarEstudianteModal.vue';
 
-const tableEl = ref<HTMLElement | null>(null);
-const table = ref<Tabulator | null>(null);
-const estudiantes = ref<Estudiante[]>([]);
-const loading = ref(false);
-const searchQuery = ref('');
-const columnMenu = ref<{ title: string; field: string; visible: boolean }[]>([]);
-const recordSummary = ref('Mostrando 0 registros');
-
-function closeAllActionDropdowns() {
-    document.querySelectorAll('.tabulator .actions-menu__dropdown.show').forEach((menu) => {
-        menu.classList.remove('show');
-    });
+// Helper para formatear condición del estudiante
+function formatCondicionEstudianteChip(value: string): { label: string; color: string } {
+    const config: Record<string, { label: string; color: string }> = {
+        ESTUDIANTE: { label: 'ESTUDIANTE', color: 'primary' },
+        EGRESADO: { label: 'EGRESADO', color: 'success' },
+    };
+    return config[value] ?? { label: value || 'ESTUDIANTE', color: 'info' };
 }
 
-function handleGlobalClick(e: MouseEvent) {
-    const target = e.target as HTMLElement;
-    if (!target.closest('.tabulator .btn-group')) {
-        closeAllActionDropdowns();
-    }
-}
+const activeTab = ref('datos-estudiante');
 
 const saveForm = reactive({
     dni: '',
@@ -139,238 +125,60 @@ const deleting = ref(false);
 
 const saveModalTitle = computed(() => (editingId.value ? 'Editar estudiante' : 'Nuevo estudiante'));
 
-const columns = [
+// Headers de la tabla
+const headers = [
     {
         title: 'ACCIONES',
-        field: '_actions',
-        width: 120,
-        headerHozAlign: 'center',
-        hozAlign: 'center',
-        resizable: false,
-        headerSort: false,
-        formatter: () => `
-            <div class="btn-group actions-menu" style="position: relative;">
-                <button
-                    class="btn btn-sm btn-primary"
-                    type="button"
-                    data-action="edit"
-                >
-                    Editar
-                </button>
-                <button
-                    class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split actions-menu__toggle"
-                    type="button"
-                    data-action="toggle-menu"
-                >
-                    <span class="visually-hidden">Toggle Dropdown</span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-start actions-menu__dropdown" style="position: absolute; left: 0; top: 100%; margin-top: 0.125rem; min-width: 180px; z-index: 1000;">
-                    <button type="button" class="dropdown-item text-danger" data-action="delete">
-                        <i class="ti ti-trash me-2"></i>Eliminar
-                    </button>
-                </div>
-            </div>
-        `,
-        cellClick: handleActionCellClick,
+        key: 'actions',
+        sortable: false,
+        width: '150px',
     },
     {
         title: 'DNI',
-        field: 'dni',
-        width: 120,
-        headerSort: true,
-        formatter: 'plaintext',
+        key: 'dni',
+        sortable: true,
+        width: '120px',
     },
     {
         title: 'NOMBRE COMPLETO',
-        field: 'estudiante',
-        minWidth: 250,
-        headerSort: true,
-        formatter: (cell: { getValue: () => unknown; getRow: () => { getData: () => Estudiante } }) => {
-            const estudiante = cell.getValue() as string | undefined;
-            if (!estudiante) {
-                const data = cell.getRow().getData() as Estudiante;
-                return `${data.nombres || ''} ${data.apellidos || ''}`.trim() || '—';
-            }
-            return estudiante;
-        },
+        key: 'estudiante',
+        sortable: true,
     },
     {
         title: 'GRADO Y SECCIÓN',
-        field: 'grado_seccion',
-        width: 150,
-        headerHozAlign: 'center',
-        hozAlign: 'center',
-        formatter: (cell: { getValue: () => unknown; getRow: () => { getData: () => Estudiante } }) => {
-            const gradoSeccion = cell.getValue() as string | undefined;
-            if (gradoSeccion) return gradoSeccion;
-            const data = cell.getRow().getData() as Estudiante;
-            if (data.grado && data.seccion) {
-                return `${data.grado}° ${data.seccion}`;
-            }
-            return '—';
-        },
+        key: 'grado_seccion',
+        sortable: false,
+        align: 'center' as const,
+        width: '150px',
     },
     {
         title: 'CORREO',
-        field: 'correo_electronico',
-        minWidth: 200,
-        headerSort: true,
-        formatter: 'plaintext',
+        key: 'correo_electronico',
+        sortable: true,
     },
     {
         title: 'CONDICIÓN',
-        field: 'condicion_estudiante',
-        width: 150,
-        headerHozAlign: 'center',
-        hozAlign: 'center',
-        formatter: (cell: { getValue: () => unknown }) => {
-            const value = (cell.getValue() as string) || 'ESTUDIANTE';
-            const config: Record<string, { label: string; className: string }> = {
-                ESTUDIANTE: {
-                    label: 'ESTUDIANTE',
-                    className: 'badge rounded-pill px-3 bg-blue-lt text-blue fw-semibold',
-                },
-                EGRESADO: {
-                    label: 'EGRESADO',
-                    className: 'badge rounded-pill px-3 bg-green-lt text-green fw-semibold',
-                },
-            };
-
-            const { label, className } = config[value] ?? {
-                label: value,
-                className: 'badge rounded-pill px-3 bg-gray-lt text-secondary fw-semibold',
-            };
-
-            return `<span class="${className}">${label}</span>`;
-        },
+        key: 'condicion_estudiante',
+        sortable: true,
+        align: 'center' as const,
+        width: '150px',
     },
 ];
 
-async function initializeTable() {
-    await nextTick();
-    if (!tableEl.value) return;
+// Composable de tabla
+const table = useVuetifyTable<Estudiante>({
+    apiURL: '/configuracion/estudiante',
+    searchFields: ['dni', 'nombres', 'apellidos', 'estudiante', 'correo_electronico'],
+    serverSidePagination: false,
+    serverSideSorting: false,
+    serverSideSearch: false,
+});
 
-    table.value = new Tabulator(tableEl.value, {
-        layout: 'fitColumns',
-        reactiveData: false,
-        placeholder: 'No se encontraron registros',
-        columns,
-        printHeader: '<h4 class="mb-3">Listado de estudiantes</h4>',
-        printFooter: '<small>Generado desde la intranet</small>',
-        height: 'calc(100vh - 360px)',
-        columnDefaults: {
-            resizable: true,
-        },
-        ajaxURL: 'configuracion/estudiante',
-        ajaxContentType: 'json',
-        ajaxRequestFunc: async (url: string) => {
-            const response = await apiClient.get(url);
-            return response.data;
-        },
-        ajaxResponse: (_url: string, _params: unknown, response: { data?: Estudiante[] }) => {
-            const data: Estudiante[] = response?.data ?? [];
-            estudiantes.value = data;
-            loading.value = false;
-            updateRecordSummary();
-            return data;
-        },
-    });
-
-    table.value.on('dataLoading', () => {
-        loading.value = true;
-    });
-    table.value.on('tableBuilt', prepareColumnMenu);
-    table.value.on('dataLoaded', updateRecordSummary);
-    table.value.on('dataFiltered', updateRecordSummary);
-    table.value.on('columnVisibilityChanged', prepareColumnMenu);
-}
-
-function prepareColumnMenu() {
-    if (!table.value) return;
-    const columns = table.value.getColumns() as Array<{
-        getDefinition: () => { title?: string };
-        getField: () => string;
-        isVisible: () => boolean;
-    }>;
-    columnMenu.value = columns.map((column) => ({
-        title: column.getDefinition().title ?? '',
-        field: column.getField(),
-        visible: column.isVisible(),
-    }));
-}
-
-function handleActionCellClick(e: MouseEvent, cell: { getRow: () => { getData: () => Estudiante } }) {
-    const target = e.target as HTMLElement;
-    const toggleButton = target.closest('button[data-action="toggle-menu"]');
-
-    if (toggleButton) {
-        e.stopPropagation();
-        const group = toggleButton.closest('.actions-menu');
-        const menu = group?.querySelector('.actions-menu__dropdown');
-        const isOpen = menu?.classList.contains('show');
-        closeAllActionDropdowns();
-        if (!isOpen) {
-            menu?.classList.add('show');
-        }
-        return;
-    }
-
-    const actionBtn = target.closest('button[data-action]');
-    if (!actionBtn) return;
-
-    e.stopPropagation();
-    closeAllActionDropdowns();
-    const action = actionBtn.getAttribute('data-action');
-    const data = cell.getRow().getData() as Estudiante;
-
-    if (action === 'edit') {
-        openEditModal(data);
-    }
-
-    if (action === 'delete') {
-        openDeleteModal(data);
-    }
-}
+// Inicializar menú de columnas
+table.updateColumnMenu(headers);
 
 async function reloadTable() {
-    if (!table.value) return;
-    loading.value = true;
-    await table.value.replaceData('configuracion/estudiante');
-    applySearch(searchQuery.value);
-    updateRecordSummary();
-}
-
-function applySearch(query: string) {
-    const normalized = query.trim().toLowerCase();
-    if (!table.value) return;
-
-    if (!normalized) {
-        table.value.clearFilter(true);
-    } else {
-        table.value.setFilter((rowData: Estudiante) => {
-            const values = [
-                rowData.dni,
-                rowData.nombres,
-                rowData.apellidos,
-                rowData.estudiante,
-                rowData.correo_electronico,
-            ];
-            return values.some((value) => value?.toLowerCase().includes(normalized));
-        });
-    }
-
-    updateRecordSummary();
-}
-
-function updateRecordSummary() {
-    if (!table.value) {
-        recordSummary.value = 'Mostrando 0 registros';
-        return;
-    }
-
-    const filteredRows = table.value.getRows(true).length;
-    const totalRows = table.value.getData().length || estudiantes.value.length;
-    recordSummary.value = `Mostrando ${filteredRows} de ${totalRows} registros`;
+    await table.reloadTable();
 }
 
 async function openCreateModal() {
@@ -378,6 +186,7 @@ async function openCreateModal() {
     resetSaveForm();
     fotoPreview.value = '';
     fotoFile.value = null;
+    activeTab.value = 'datos-estudiante';
     showSaveModal.value = true;
 }
 
@@ -503,6 +312,7 @@ async function openEditModal(estudianteData: Estudiante) {
         return;
     }
 
+    activeTab.value = 'datos-estudiante';
     showSaveModal.value = true;
 }
 
@@ -768,25 +578,20 @@ async function handleDeleteConfirm() {
 }
 
 function downloadExcel() {
-    if (!table.value) return;
-    // @ts-ignore Assign XLSX global
-    (window as any).XLSX = XLSX;
-    table.value.download('xlsx', 'estudiantes.xlsx', { sheetName: 'Estudiantes' });
+    table.downloadExcel('estudiantes.xlsx', 'Estudiantes');
 }
 
 function printTable() {
-    table.value?.print(false, true);
+    table.printTable();
 }
 
-function toggleColumnVisibility(field: string) {
-    if (!table.value) return;
-    const column = table.value.getColumn(field);
-    if (!column) return;
+function toggleColumnVisibility(key: string) {
+    table.toggleColumnVisibility(key);
+}
 
-    column.toggle();
-    columnMenu.value = columnMenu.value.map((item) =>
-        item.field === field ? { ...item, visible: column.isVisible() } : item
-    );
+function updateSearchValue(value: string) {
+    table.searchQuery.value = value;
+    table.applySearch(value);
 }
 
 function resetSaveForm() {
@@ -868,170 +673,209 @@ function closeDeleteModal() {
     showDeleteModal.value = false;
 }
 
-function updateSearchValue(value: string) {
-    searchQuery.value = value;
-}
-
 onMounted(async () => {
-    // @ts-ignore expose for Tabulator download module
     (window as any).XLSX = XLSX;
-    await initializeTable();
-    document.addEventListener('click', handleGlobalClick);
-});
-
-watch(searchQuery, (value) => {
-    applySearch(value);
-});
-
-onBeforeUnmount(() => {
-    table.value?.destroy();
-    document.removeEventListener('click', handleGlobalClick);
+    await table.loadItems({
+        page: 1,
+        itemsPerPage: 10,
+    });
 });
 </script>
 
 <template>
     <AuthenticatedLayout>
-        <template #header>
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                <div>
-                    <h1 class="h2 mb-1">Configuración / Estudiantes</h1>
-                    <p class="text-secondary mb-0">
-                        Gestiona los estudiantes; crea, edita o elimina según necesidad.
-                    </p>
-                </div>
-                <div class="btn-group">
-                    <button
-                        type="button"
-                        class="btn btn-success d-flex align-items-center gap-2"
-                        @click="openImportModal"
-                    >
-                        <i class="ti ti-upload"></i>
-                        Importar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-primary d-flex align-items-center gap-2"
-                        @click="openCreateModal"
-                    >
-                        <i class="ti ti-plus"></i>
-                        Nuevo
-                    </button>
-                </div>
-            </div>
-        </template>
-
-        <div class="estudiante-page">
-            <TableCard
-                :loading="loading"
-                :column-menu="columnMenu"
-                :search-value="searchQuery"
-                search-placeholder="Buscar estudiante..."
-                @print="printTable"
-                @export="downloadExcel"
-                @toggle-column="toggleColumnVisibility"
-                @update:search="updateSearchValue"
-            >
-                <div ref="tableEl" class="tabulator-wrapper"></div>
-
-                <template #footer-left>
-                    <span>{{ recordSummary }}</span>
-                </template>
-                <template #footer-right>
-                    <span>Actualizado automáticamente al guardar cambios.</span>
-                </template>
-            </TableCard>
-        </div>
-
-        <AppModal :open="showSaveModal" :title="saveModalTitle" size="full" @close="closeSaveModal">
-            <template #body>
-                <form class="space-y-3" @submit.prevent>
-                    <ul class="nav nav-tabs mb-3" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button
-                                class="nav-link active"
-                                data-bs-toggle="tab"
-                                data-bs-target="#tab-datos-estudiante"
-                                type="button"
-                                role="tab"
-                            >
-                                Datos del estudiante
-                            </button>
-                        </li>
-
-                        <li class="nav-item" role="presentation">
-                            <button
-                                class="nav-link"
-                                data-bs-toggle="tab"
-                                data-bs-target="#tab-padres"
-                                type="button"
-                                role="tab"
-                            >
-                                Padres
-                            </button>
-                        </li>
-
-                        <li class="nav-item" role="presentation">
-                            <button
-                                class="nav-link"
-                                data-bs-toggle="tab"
-                                data-bs-target="#tab-apoderados"
-                                type="button"
-                                role="tab"
-                            >
-                                Apoderados
-                            </button>
-                        </li>
-                    </ul>
-
-                    <div class="tab-content">
-                        <div
-                            class="tab-pane fade show active"
-                            id="tab-datos-estudiante"
-                            role="tabpanel"
-                        >
-                            <EstudianteForm
-                                v-model="saveForm"
-                                :foto-preview="fotoPreview"
-                                :editing-id="editingId"
-                                @foto-change="handleFotoChange"
-                                @generate-codigo="generateCodigoEstudiante"
-                            />
+        <v-container fluid class="pa-4">
+            <!-- Header Section -->
+            <v-card class="mb-4" rounded="lg" elevation="1">
+                <v-card-text class="pa-4">
+                    <div class="d-flex flex-wrap align-center justify-space-between ga-4">
+                        <div>
+                            <h1 class="text-h5 font-weight-bold mb-2">Estudiantes</h1>
+                            <p class="text-body-2 text-medium-emphasis mb-0">
+                                Gestiona los estudiantes; crea, edita o elimina según necesidad.
+                            </p>
                         </div>
-
-                        <div class="tab-pane fade" id="tab-padres" role="tabpanel">
-                            <PadresForm
-                                :padre-form="padreForm"
-                                :madre-form="madreForm"
-                                :apoderado-rol-padre-form="apoderadoRolPadreForm"
-                                @update:padre-form="(value) => Object.assign(padreForm, value)"
-                                @update:madre-form="(value) => Object.assign(madreForm, value)"
-                                @update:apoderado-rol-padre-form="(value) => Object.assign(apoderadoRolPadreForm, value)"
-                            />
-                        </div>
-                        <div class="tab-pane fade" id="tab-apoderados" role="tabpanel">
-                            <ApoderadosForm v-model="apoderados" />
+                        <div class="d-flex ga-2">
+                            <v-btn
+                                color="success"
+                                prepend-icon="mdi-upload"
+                                variant="flat"
+                                size="default"
+                                @click="openImportModal"
+                                aria-label="Importar estudiantes"
+                                class="text-none"
+                            >
+                                Importar
+                            </v-btn>
+                            <v-btn
+                                color="primary"
+                                prepend-icon="mdi-plus"
+                                variant="flat"
+                                size="default"
+                                @click="openCreateModal"
+                                aria-label="Crear nuevo estudiante"
+                                class="text-none"
+                            >
+                                Nuevo
+                            </v-btn>
                         </div>
                     </div>
-                </form>
+                </v-card-text>
+            </v-card>
+            <v-card rounded="lg" elevation="1">
+                <VDataTableCard
+                    :loading="table.loading.value"
+                    :column-menu="table.columnMenu.value"
+                    :search-value="table.searchQuery.value"
+                    search-placeholder="Buscar estudiante..."
+                    @print="printTable"
+                    @export="downloadExcel"
+                    @toggle-column="toggleColumnVisibility"
+                    @update:search="updateSearchValue"
+                >
+                    <v-data-table-server
+                        v-model:page="table.page.value"
+                        v-model:items-per-page="table.itemsPerPage.value"
+                        v-model:sort-by="table.sortBy.value"
+                        :headers="headers.filter(h => table.columnMenu.value.find(c => c.key === h.key)?.visible !== false)"
+                        :items="table.items.value"
+                        :loading="table.loading.value"
+                        :items-length="table.totalItems.value"
+                        density="compact"
+                        fixed-header
+                        height="450"
+                        :items-per-page-options="[]"
+                        hide-default-footer
+                        @update:options="table.loadItems"
+                        class="elevation-0"
+                    >
+                        <template #item.actions="{ item }">
+                            <div class="d-flex align-center ga-1">
+                                <v-btn
+                                    icon="mdi-pencil"
+                                    size="small"
+                                    color="primary"
+                                    variant="flat"
+                                    @click="openEditModal(item)"
+                                />
+                                <v-menu>
+                                    <template #activator="{ props: menuProps }">
+                                        <v-btn
+                                            v-bind="menuProps"
+                                            icon="mdi-dots-vertical"
+                                            size="small"
+                                            color="grey-darken-1"
+                                            variant="text"
+                                        />
+                                    </template>
+                                    <v-list density="compact">
+                                        <v-list-item
+                                            prepend-icon="mdi-delete"
+                                            title="Eliminar"
+                                            class="text-error"
+                                            @click="openDeleteModal(item)"
+                                        />
+                                    </v-list>
+                                </v-menu>
+                            </div>
+                        </template>
+
+                        <template #item.estudiante="{ item }">
+                            {{ item.estudiante || `${item.nombres || ''} ${item.apellidos || ''}`.trim() || '—' }}
+                        </template>
+
+                        <template #item.grado_seccion="{ item }">
+                            {{ item.grado && item.seccion ? `${item.grado}° ${item.seccion}` : '—' }}
+                        </template>
+
+                        <template #item.condicion_estudiante="{ value }">
+                            <v-chip
+                                :color="formatCondicionEstudianteChip(value || 'ESTUDIANTE').color"
+                                size="small"
+                                variant="flat"
+                                class="text-uppercase font-weight-medium"
+                            >
+                                {{ formatCondicionEstudianteChip(value || 'ESTUDIANTE').label }}
+                            </v-chip>
+                        </template>
+                    </v-data-table-server>
+
+                    <template #footer-left>
+                        <span class="text-body-2 text-medium-emphasis">{{ table.recordSummary.value }}</span>
+                    </template>
+                    <template #footer-right>
+                        <span class="text-body-2 text-medium-emphasis">Actualizado automáticamente</span>
+                    </template>
+                </VDataTableCard>
+            </v-card>
+        </v-container>
+
+        <AppModal :open="showSaveModal" :title="saveModalTitle" size="fullscreen" @close="closeSaveModal">
+            <template #body>
+                <v-tabs v-model="activeTab" bg-color="primary" stacked class="mb-4">
+                    <v-tab value="datos-estudiante">
+                        <v-icon>mdi-account</v-icon>
+                        <span class="text-caption">Datos del Estudiante</span>
+                    </v-tab>
+                    <v-tab value="padres">
+                        <v-icon>mdi-account-group</v-icon>
+                        <span class="text-caption">Padres</span>
+                    </v-tab>
+                    <v-tab value="apoderados">
+                        <v-icon>mdi-account-supervisor</v-icon>
+                        <span class="text-caption">Apoderados</span>
+                    </v-tab>
+                </v-tabs>
+
+                <v-window v-model="activeTab">
+                    <v-window-item value="datos-estudiante">
+                        <EstudianteForm
+                            v-model="saveForm"
+                            :foto-preview="fotoPreview"
+                            :editing-id="editingId"
+                            @foto-change="handleFotoChange"
+                            @generate-codigo="generateCodigoEstudiante"
+                        />
+                    </v-window-item>
+
+                    <v-window-item value="padres">
+                        <PadresForm
+                            :padre-form="padreForm"
+                            :madre-form="madreForm"
+                            :apoderado-rol-padre-form="apoderadoRolPadreForm"
+                            @update:padre-form="(value) => Object.assign(padreForm, value)"
+                            @update:madre-form="(value) => Object.assign(madreForm, value)"
+                            @update:apoderado-rol-padre-form="(value) => Object.assign(apoderadoRolPadreForm, value)"
+                        />
+                    </v-window-item>
+
+                    <v-window-item value="apoderados">
+                        <ApoderadosForm v-model="apoderados" />
+                    </v-window-item>
+                </v-window>
             </template>
             <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button
-                        type="button"
-                        class="btn btn-default btn-sm pull-left"
+                <div class="d-flex justify-space-between w-100">
+                    <v-btn
+                        variant="outlined"
                         @click="closeSaveModal"
+                        :disabled="saving"
+                        class="text-none"
                     >
-                        <i class="fa fa-times"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-primary btn-sm"
+                        <v-icon start>mdi-close</v-icon>
+                        Cancelar
+                    </v-btn>
+                    <v-btn
+                        color="primary"
+                        variant="flat"
+                        :loading="saving"
                         :disabled="saving"
                         @click="handleSaveSubmit"
+                        class="text-none"
                     >
-                        <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                        <v-icon start>mdi-content-save</v-icon>
                         {{ editingId ? 'Actualizar' : 'Guardar' }}
-                    </button>
+                    </v-btn>
                 </div>
             </template>
         </AppModal>
@@ -1050,23 +894,27 @@ onBeforeUnmount(() => {
                 </p>
             </template>
             <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button
-                        type="button"
-                        class="btn btn-default btn-sm pull-left"
+                <div class="d-flex justify-space-between w-100">
+                    <v-btn
+                        variant="outlined"
                         @click="closeDeleteModal"
+                        :disabled="deleting"
+                        class="text-none"
                     >
-                        <i class="fa fa-times"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-danger btn-sm"
+                        <v-icon start>mdi-close</v-icon>
+                        Cancelar
+                    </v-btn>
+                    <v-btn
+                        color="error"
+                        variant="flat"
+                        :loading="deleting"
                         :disabled="deleting"
                         @click="handleDeleteConfirm"
+                        class="text-none"
                     >
-                        <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
+                        <v-icon start>mdi-delete</v-icon>
                         Eliminar
-                    </button>
+                    </v-btn>
                 </div>
             </template>
         </AppModal>

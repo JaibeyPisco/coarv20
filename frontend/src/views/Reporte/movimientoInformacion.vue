@@ -1,217 +1,214 @@
-<template>
-    <AuthenticatedLayout>
-           
-        <div class="card mb-2">
-            <div class="card-body">
-                <div class="row g-2 align-items-end">
-                    <div class="col-md-2">
-                        <label class="form-label">Fecha inicio</label>
-                        <input type="date" class="form-control" name="fecha_inicio" v-model="fechaInicio">
-                    </div>
-
-                    <div class="col-md-2">
-                        <label class="form-label">Fecha fin</label>
-                        <input type="date" class="form-control" name="fecha_fin" v-model="fechaFin">
-                    </div>
-
-                    <div class="col-md-2">
-                        <button class="btn btn-primary w-100" @click="buscar">
-                            Buscar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-            <div>
-            <TableCard
-                :loading="loading"
-                :column-menu="columnMenu"
-                :search-value="searchQuery"
-                search-placeholder="Buscar usuarios..."
-                @print="printTable"
-                @export="downloadExcel"
-                @toggle-column="toggleColumnVisibility"
-                @update:search="updateSearchValue"
-            >
-                <div ref="tableEl" class="tabulator-wrapper"></div>
-
-                <template #footer-left>
-                    <span>{{ recordSummary }}</span>
-                </template>
-                <template #footer-right>
-                    <span>Actualizado automáticamente al guardar cambios.</span>
-                </template>
-            </TableCard>
-        </div> 
-    </AuthenticatedLayout>
-</template>
-
 <script setup lang="ts">
-
-
-import TableCard from '@/components/Table/TableCard.vue';
-import AuthenticatedLayout from '@/components/Layouts/AuthenticatedLayout.vue'; 
-import { nextTick, onMounted, ref } from 'vue';
-import type { MovimientoInformacion } from '@/types/reportes/MovimientoInformacion';
- import { TabulatorFull as Tabulator } from 'tabulator-tables';
-import apiClient from '@/api/axios';
+import AuthenticatedLayout from '@/components/Layouts/AuthenticatedLayout.vue';
+import { onMounted, ref } from 'vue';
 import * as XLSX from 'xlsx';
+import type { MovimientoInformacion } from '@/types/reportes/MovimientoInformacion';
+import VDataTableCard from '@/components/Table/VDataTableCard.vue';
+import { useVuetifyTable } from '@/composables/useVuetifyTable';
 import { CurrentDate, formatTimeAndDate } from '@/utils/HelperDates';
+import { formatAccionChip } from '@/utils/vuetifyTableHelpers';
 
-const tableEl = ref<HTMLElement|null> (null);
-const table = ref<any | null>(null);
-const movimientoInformacion = ref<MovimientoInformacion[]>([]);
-const loading = ref(false);
-const searchQuery = ref('');
-const columnMenu = ref<{ title: string; field: string; visible: boolean }[]>([]);
-const recordSummary = ref('Mostrando 0 registros');
 const fechaFin = ref(CurrentDate());
 const fechaInicio = ref(CurrentDate());
 
-const buscar = () =>{
-    table.value?.setData();
-}
-
-
-const columns = [
- 
+// Headers de la tabla
+const headers = [
     {
         title: 'FECHA',
-        field: 'fecha',
-       
-        headerSort: true,
-        formatter:  (cell: any) =>{
-            console.log(cell);
-            
-            return formatTimeAndDate(cell.getValue());
-        },
+        key: 'fecha',
+        sortable: true,
     },
     {
         title: 'USUARIO',
-        field: 'usuario',
-    },
-       {
-        title: 'MÓDULO',
-        field: 'modulo',
-    },
-      {
-        title: 'MENÚ',
-        field: 'menu',
+        key: 'usuario',
+        sortable: true,
     },
     {
-        title: 'ACCION',
-        field: 'accion',
-      
-        headerHozAlign: 'center',
-        hozAlign: 'center',
-        formatter: (cell: any) => {
-            const accion =  cell.getValue();
- 
-                 let html = '';
-
-                    if (accion == 'NUEVO') {
-                        html = `<span class="badge bg-blue text-blue-fg">${accion}</span>`;
-                    }
-                    else if (accion == 'EDITAR') {
-                        html = `<span class="badge bg-yellow text-yellow-fg">${accion}</span>`;
-                    }
-                    else if (accion == 'ELIMINAR') {
-                        html = `<span class="badge bg-yellow text-yellow-fg">${accion}</span>`;
-                    }
-                    else if (accion == 'ANULAR') {
-                        html = `<span class="badge bg-red text-red-fg">${accion}</span>`;
-                    }
-                    else {
-                        html = `<span class="badge bg-default text-default-fg">${accion}</span>`;
-                    }
- 
-            return html;
-        },
+        title: 'MÓDULO',
+        key: 'modulo',
+        sortable: true,
     },
-
-        {
+    {
+        title: 'MENÚ',
+        key: 'menu',
+        sortable: true,
+    },
+    {
+        title: 'ACCIÓN',
+        key: 'accion',
+        sortable: true,
+        align: 'center' as const,
+        width: '150px',
+    },
+    {
         title: 'DESCRIPCIÓN',
-        field: 'descripcion',
-          formatter:  (cell: any) =>{
-            console.log(cell);
-            
-            return `<div>${cell.getValue()}</div>`;
-        },
+        key: 'descripcion',
+        sortable: false,
     },
 ];
 
-async function initializeTable() {
-    await nextTick();
-    if (!tableEl.value) return;
-
-    table.value = new Tabulator(tableEl.value, {
-        layout: 'fitColumns',
-        reactiveData: false,
-        placeholder: 'No se encontraron registros',
-        columns,
-        printHeader: '<h4 class="mb-3">Listado de movimiento Informacion</h4>',
-        printFooter: '<small>Generado desde la intranet</small>',
-        height: 'calc(100vh - 360px)',
-        columnDefaults: {
-            resizable: true,
-        },
-        ajaxURL: 'reportes/movimiento_informacion',
-        ajaxContentType: 'json',
-
-        ajaxParams: () => ({
-            fecha_inicio: fechaInicio.value,
-            fecha_fin: fechaFin.value,
-        }),
-        ajaxRequestFunc: async (url: string, config: any, params: any) => {
-            const response = await apiClient.get(url, {params});
-            
-            return response.data;
-        },
-        ajaxResponse: (_url: string, _params: any, response: any) => {
-            const data: MovimientoInformacion[] = response?.data ?? [];
-            movimientoInformacion.value = data;
-            loading.value = false;
-            updateRecordSummary();
-            return data;
-        },
-    });
-
-    table.value.on('dataLoading', () => {
-        loading.value = true;
-    });
-    table.value.on('tableBuilt', prepareColumnMenu);
-    table.value.on('dataLoaded', updateRecordSummary);
-    table.value.on('dataFiltered', updateRecordSummary);
-    table.value.on('columnVisibilityChanged', prepareColumnMenu);
-}
-
-
-function updateRecordSummary() {
-    if (!table.value) {
-        recordSummary.value = 'Mostrando 0 registros';
-        return;
-    }
-
-    const filteredRows = table.value.getRows(true).length;
-    const totalRows = table.value.getData().length || movimientoInformacion.value.length;
-    recordSummary.value = `Mostrando ${filteredRows} de ${totalRows} registros`;
-}
-function prepareColumnMenu() {
-    if (!table.value) return;
-    columnMenu.value = table.value.getColumns().map((column: any) => ({
-        title: column.getDefinition().title ?? '',
-        field: column.getField(),
-        visible: column.isVisible(),
-    }));
-}
-
-onMounted(async () => {
-    // @ts-ignore expose for Tabulator download module
-    (window as any).XLSX = XLSX;
-    await initializeTable();
-    // No llamar reloadTable() aquí - la tabla ya carga datos automáticamente con ajaxURL
-  //  document.addEventListener('click', handleGlobalClick);
+// Composable de tabla
+const table = useVuetifyTable<MovimientoInformacion>({
+    apiURL: '/reportes/movimiento_informacion',
+    apiParams: () => ({
+        fecha_inicio: fechaInicio.value,
+        fecha_fin: fechaFin.value,
+    }),
+    searchFields: ['usuario', 'modulo', 'menu', 'descripcion'],
+    serverSidePagination: false,
+    serverSideSorting: false,
+    serverSideSearch: false,
 });
 
+// Inicializar menú de columnas
+table.updateColumnMenu(headers);
+
+// Funciones
+const buscar = () => {
+    table.reloadTable();
+};
+
+const updateSearchValue = (value: string) => {
+    table.searchQuery.value = value;
+    table.applySearch(value);
+};
+
+const downloadExcel = () => {
+    table.downloadExcel('movimiento-informacion.xlsx', 'Movimiento de Información');
+};
+
+const toggleColumnVisibility = (key: string) => {
+    table.toggleColumnVisibility(key);
+};
+
+// Lifecycle
+onMounted(async () => {
+    (window as any).XLSX = XLSX;
+    await table.loadItems({
+        page: 1,
+        itemsPerPage: 10,
+    });
+});
 </script>
+
+<template>
+    <AuthenticatedLayout>
+        <template #header>
+            <v-container fluid class="py-0">
+                <v-row align="center">
+                    <v-col>
+                        <h1 class="text-h5 mb-1">Reportes / Movimiento de Información</h1>
+                        <p class="text-subtitle-1 text-medium-emphasis mb-0">
+                            Consulta el historial de movimientos de información en el sistema
+                        </p>
+                    </v-col>
+                </v-row>
+            </v-container>
+        </template>
+
+        <v-row>
+            <v-col cols="12">
+                <v-card class="mb-4" rounded="lg" elevation="1">
+                    <v-card-text>
+                        <v-row align="end" class="g-2">
+                            <v-col cols="12" md="3">
+                                <v-text-field
+                                    v-model="fechaInicio"
+                                    label="Fecha inicio"
+                                    type="date"
+                                    density="compact"
+                                    variant="outlined"
+                                    hide-details
+                                />
+                            </v-col>
+
+                            <v-col cols="12" md="3">
+                                <v-text-field
+                                    v-model="fechaFin"
+                                    label="Fecha fin"
+                                    type="date"
+                                    density="compact"
+                                    variant="outlined"
+                                    hide-details
+                                />
+                            </v-col>
+
+                            <v-col cols="12" md="auto">
+                                <v-btn
+                                    color="primary"
+                                    block
+                                    @click="buscar"
+                                    prepend-icon="mdi-magnify"
+                                >
+                                    Buscar
+                                </v-btn>
+                            </v-col>
+                        </v-row>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+        </v-row>
+
+        <v-row>
+            <v-col cols="12">
+                <v-card rounded="lg" elevation="1">
+                    <VDataTableCard
+                        :loading="table.loading.value"
+                        :column-menu="table.columnMenu.value"
+                        :search-value="table.searchQuery.value"
+                        search-placeholder="Buscar movimiento..."
+                        @print="table.printTable"
+                        @export="downloadExcel"
+                        @toggle-column="toggleColumnVisibility"
+                        @update:search="updateSearchValue"
+                    >
+                        <v-data-table-server
+                            v-model:page="table.page.value"
+                            v-model:items-per-page="table.itemsPerPage.value"
+                            v-model:sort-by="table.sortBy.value"
+                            :headers="headers.filter(h => table.columnMenu.value.find(c => c.key === h.key)?.visible !== false)"
+                            :items="table.items.value"
+                            :loading="table.loading.value"
+                            :items-length="table.totalItems.value"
+                            :density="'compact'"
+                            :fixed-header="true"
+                            height="450"
+                            :items-per-page-options="[]"
+                            hide-default-footer
+                            @update:options="table.loadItems"
+                            class="elevation-0"
+                        >
+                            <template #item.fecha="{ value }">
+                                <span class="text-body-2">{{ formatTimeAndDate(value) }}</span>
+                            </template>
+
+                            <template #item.accion="{ value }">
+                                <v-chip
+                                    :color="formatAccionChip(value).color"
+                                    size="small"
+                                    variant="flat"
+                                    class="text-uppercase font-weight-medium"
+                                >
+                                    {{ formatAccionChip(value).label }}
+                                </v-chip>
+                            </template>
+
+                            <template #item.descripcion="{ value }">
+                                <div class="text-body-2" style="max-width: 400px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.4;">
+                                    {{ value || '—' }}
+                                </div>
+                            </template>
+                        </v-data-table-server>
+
+                        <template #footer-left>
+                            <span class="text-body-2 text-medium-emphasis">{{ table.recordSummary.value }}</span>
+                        </template>
+                        <template #footer-right>
+                            <span class="text-body-2 text-medium-emphasis">Actualizado automáticamente al guardar cambios.</span>
+                        </template>
+                    </VDataTableCard>
+                </v-card>
+            </v-col>
+        </v-row>
+    </AuthenticatedLayout>
+</template>

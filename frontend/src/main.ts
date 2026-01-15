@@ -6,18 +6,30 @@ import * as components from 'vuetify/components';
 import * as directives from 'vuetify/directives';
 import router from './router';
 import App from './App.vue';
-import './style.css';
-import { notificacion } from './utils/notificacion';
+import { logger } from './utils/logger';
 import 'vue-select/dist/vue-select.css';
 import 'vuetify/styles';
 import '@mdi/font/css/materialdesignicons.css';
+
+// Cargar tema desde localStorage antes de crear Vuetify
+const getStoredTheme = (): 'light' | 'dark' => {
+    try {
+        const storedTheme = localStorage.getItem('app-theme');
+        if (storedTheme === 'dark' || storedTheme === 'light') {
+            return storedTheme;
+        }
+    } catch (error) {
+        logger.warn('Error loading theme from localStorage', { error });
+    }
+    return 'light';
+};
 
 // Configurar Vuetify
 const vuetify = createVuetify({
     components,
     directives,
     theme: {
-        defaultTheme: 'light',
+        defaultTheme: getStoredTheme(),
         themes: {
             light: {
                 colors: {
@@ -52,10 +64,6 @@ app.use(pinia);
 app.use(router);
 app.use(vuetify);
 
-// Exponer notificacion globalmente
-if (typeof window !== 'undefined') {
-    (window as any).notificacion = notificacion;
-}
 app.component('v-select', vSelect);
 
 app.mount('#app');

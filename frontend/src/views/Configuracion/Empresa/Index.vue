@@ -141,27 +141,6 @@ async function handleSubmit() {
     }
 }
 
-function handleLogoChange(files: File[] | null) {
-    if (files && files.length > 0) {
-        logoUpload.file.value = files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            logoUpload.setPreview(e.target?.result as string);
-        };
-        reader.readAsDataURL(files[0]);
-    }
-}
-
-function handleLogoFacturaChange(files: File[] | null) {
-    if (files && files.length > 0) {
-        logoFacturaUpload.file.value = files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            logoFacturaUpload.setPreview(e.target?.result as string);
-        };
-        reader.readAsDataURL(files[0]);
-    }
-}
 
 onMounted(() => {
     loadEmpresa();
@@ -170,36 +149,69 @@ onMounted(() => {
 
 <template>
     <AuthenticatedLayout>
-        <template #header>
-            <div class="d-flex align-center justify-space-between flex-wrap ga-3">
-                <div>
-                    <h1 class="text-h5 font-weight-bold mb-1">Configuración / Empresa</h1>
-                    <p class="text-body-2 text-medium-emphasis mb-0">
-                        Gestiona la información de la empresa.
-                    </p>
-                </div>
-            </div>
-        </template>
+        <v-container fluid class="pa-4">
+            <!-- Header Section -->
+            <v-card class="mb-4" rounded="lg" elevation="1">
+                <v-card-text class="pa-4">
+                    <div class="d-flex flex-wrap align-center justify-space-between ga-4">
+                        <div>
+                            <h1 class="text-h5 font-weight-bold mb-2">Empresa</h1>
+                            <p class="text-body-2 text-medium-emphasis mb-0">
+                                Gestiona la información de la empresa.
+                            </p>
+                        </div>
+                    </div>
+                </v-card-text>
+            </v-card>
 
-        <v-row>
-            <v-col cols="12">
-                <v-card elevation="1">
-                    <v-card-title>Datos de la Empresa</v-card-title>
-                    <v-divider />
-                    <v-card-text v-if="!loading">
-                        <v-form @submit.prevent="handleSubmit">
-                            <v-row>
-                                <v-col cols="12" md="3">
-                                    <div class="text-center mb-4">
-                                        <v-img
-                                            :key="`logo-${logoPreview}`"
-                                            :src="logoPreview || '/images/sin_imagen.jpg'"
-                                            alt="Logo"
-                                            max-height="200"
-                                            cover
-                                            class="rounded mb-2"
-                                            style="border: 1px solid rgba(0,0,0,0.12);"
-                                        />
+            <!-- Main Content Card -->
+            <v-card rounded="lg" elevation="2">
+                <!-- Header con título y divider -->
+                <v-card-title class="pa-4">
+                    <span class="text-h6 font-weight-medium">Datos de la Empresa</span>
+                </v-card-title>
+                <v-divider />
+
+                <!-- Loading State -->
+                <v-card-text v-if="loading" class="text-center py-12">
+                    <v-progress-circular
+                        indeterminate
+                        color="primary"
+                        size="64"
+                    />
+                    <p class="mt-4 mb-0 text-body-2 text-medium-emphasis">Cargando...</p>
+                </v-card-text>
+
+                <!-- Form Content -->
+                <v-card-text v-else class="pa-4">
+                    <v-form @submit.prevent="handleSubmit">
+                        <v-row>
+                            <!-- Sección de Logos -->
+                            <v-col cols="12" md="4">
+                                <v-sheet
+                                    variant="outlined"
+                                    class="pa-4"
+                                    rounded="md"
+                                    color="surface"
+                                >
+                                    <label class="text-body-2 font-weight-medium mb-3 d-block">Logos de la Empresa</label>
+                                    
+                                    <!-- Logo Principal -->
+                                    <div class="mb-6">
+                                        <label class="text-caption text-medium-emphasis mb-2 d-block">Logo Principal</label>
+                                        <div class="text-center mb-3">
+                                            <v-img
+                                                :key="`logo-${logoPreview}`"
+                                                :src="logoPreview || '/images/sin_imagen.jpg'"
+                                                alt="Logo"
+                                                max-height="180"
+                                                max-width="180"
+                                                contain
+                                                class="mx-auto"
+                                                rounded="md"
+                                                style="border: 1px solid rgba(0,0,0,0.12);"
+                                            />
+                                        </div>
                                         <v-file-input
                                             label="Examinar Logo"
                                             prepend-icon="mdi-image"
@@ -207,123 +219,155 @@ onMounted(() => {
                                             density="compact"
                                             variant="outlined"
                                             hide-details
-                                            @update:model-value="handleLogoChange"
+                                            @change="logoUpload.handleChange"
                                         />
                                     </div>
-                                    <div class="text-center">
-                                        <v-img
-                                            :key="`logo-factura-${logoFacturaPreview}`"
-                                            :src="logoFacturaPreview || '/images/sin_imagen.jpg'"
-                                            alt="Logo Factura"
-                                            max-height="200"
-                                            cover
-                                            class="rounded mb-2"
-                                            style="border: 1px solid rgba(0,0,0,0.12);"
-                                        />
+
+                                    <v-divider class="my-4" />
+
+                                    <!-- Logo para Facturas -->
+                                    <div>
+                                        <label class="text-caption text-medium-emphasis mb-2 d-block">Logo para Documentos</label>
+                                        <div class="text-center mb-3">
+                                            <v-img
+                                                :key="`logo-factura-${logoFacturaPreview}`"
+                                                :src="logoFacturaPreview || '/images/sin_imagen.jpg'"
+                                                alt="Logo Factura"
+                                                max-height="180"
+                                                max-width="180"
+                                                contain
+                                                class="mx-auto"
+                                                rounded="md"
+                                                style="border: 1px solid rgba(0,0,0,0.12);"
+                                            />
+                                        </div>
                                         <v-file-input
-                                            label="Logo para documentos"
+                                            label="Examinar Logo"
                                             prepend-icon="mdi-image"
                                             accept="image/*"
                                             density="compact"
                                             variant="outlined"
                                             hide-details
-                                            @update:model-value="handleLogoFacturaChange"
+                                            @change="logoFacturaUpload.handleChange"
                                         />
                                     </div>
-                                </v-col>
-                                <v-col cols="12" md="9">
-                                    <v-row>
-                                        <v-col cols="12" md="4">
-                                            <v-text-field
-                                                v-model="empresaForm.numero_documento"
-                                                label="Número RUC"
-                                                prepend-inner-icon="mdi-file-document"
-                                                :rules="[v => !!v || 'El RUC es obligatorio']"
-                                                maxlength="20"
-                                                required
-                                            />
-                                        </v-col>
-                                        <v-col cols="12" md="8">
-                                            <v-text-field
-                                                v-model="empresaForm.razon_social"
-                                                label="Razón Social"
-                                                prepend-inner-icon="mdi-office-building"
-                                                :rules="[v => !!v || 'La razón social es obligatoria']"
-                                                maxlength="200"
-                                                required
-                                            />
-                                        </v-col>
-                                        <v-col cols="12">
-                                            <v-text-field
-                                                v-model="empresaForm.nombre_comercial"
-                                                label="Nombre Comercial"
-                                                prepend-inner-icon="mdi-tag"
-                                                :rules="[v => !!v || 'El nombre comercial es obligatorio']"
-                                                maxlength="200"
-                                                required
-                                            />
-                                        </v-col>
-                                        <v-col cols="12">
-                                            <v-text-field
-                                                v-model="empresaForm.direccion"
-                                                label="Dirección"
-                                                prepend-inner-icon="mdi-home"
-                                                :rules="[v => !!v || 'La dirección es obligatoria']"
-                                                maxlength="200"
-                                                required
-                                            />
-                                        </v-col>
-                                        <v-col cols="12" md="6">
-                                            <v-text-field
-                                                v-model="empresaForm.telefono"
-                                                label="Teléfono"
-                                                prepend-inner-icon="mdi-phone"
-                                                :rules="[v => !!v || 'El teléfono es obligatorio']"
-                                                maxlength="20"
-                                                required
-                                            />
-                                        </v-col>
-                                        <v-col cols="12" md="6">
-                                            <v-text-field
-                                                v-model="empresaForm.email"
-                                                label="Correo electrónico"
-                                                prepend-inner-icon="mdi-email"
-                                                type="email"
-                                                :rules="[
-                                                    v => !!v || 'El correo es obligatorio',
-                                                    v => /.+@.+\..+/.test(v) || 'El correo debe ser válido'
-                                                ]"
-                                                maxlength="100"
-                                                required
-                                            />
-                                        </v-col>
-                                    </v-row>
-                                </v-col>
-                            </v-row>
-                            <v-divider class="my-4" />
-                            <div class="d-flex justify-end">
-                                <v-btn
-                                    type="submit"
-                                    color="primary"
-                                    :loading="saving"
-                                    :disabled="saving"
-                                    prepend-icon="mdi-content-save"
-                                >
-                                    {{ saving ? 'Guardando...' : 'Guardar' }}
-                                </v-btn>
-                            </div>
-                        </v-form>
-                    </v-card-text>
-                    <v-card-text v-else class="text-center py-8">
-                        <v-progress-circular
-                            indeterminate
-                            color="primary"
-                            size="64"
-                        />
-                        <p class="mt-4 mb-0 text-body-2 text-medium-emphasis">Cargando...</p>
-                    </v-card-text>
-                </v-card>
-            </v-col>
-        </v-row>
+                                </v-sheet>
+                            </v-col>
+
+                            <!-- Formulario de Datos -->
+                            <v-col cols="12" md="8">
+                                <v-row>
+                                    <!-- Número RUC -->
+                                    <v-col cols="12" md="4">
+                                        <v-text-field
+                                            v-model="empresaForm.numero_documento"
+                                            label="Número RUC"
+                                            prepend-inner-icon="mdi-file-document"
+                                            :rules="[v => !!v || 'El RUC es obligatorio']"
+                                            maxlength="20"
+                                            required
+                                            variant="outlined"
+                                            density="compact"
+                                        />
+                                    </v-col>
+
+                                    <!-- Razón Social -->
+                                    <v-col cols="12" md="8">
+                                        <v-text-field
+                                            v-model="empresaForm.razon_social"
+                                            label="Razón Social"
+                                            prepend-inner-icon="mdi-office-building"
+                                            :rules="[v => !!v || 'La razón social es obligatoria']"
+                                            maxlength="200"
+                                            required
+                                            variant="outlined"
+                                            density="compact"
+                                        />
+                                    </v-col>
+
+                                    <!-- Nombre Comercial -->
+                                    <v-col cols="12">
+                                        <v-text-field
+                                            v-model="empresaForm.nombre_comercial"
+                                            label="Nombre Comercial"
+                                            prepend-inner-icon="mdi-tag"
+                                            :rules="[v => !!v || 'El nombre comercial es obligatorio']"
+                                            maxlength="200"
+                                            required
+                                            variant="outlined"
+                                            density="compact"
+                                        />
+                                    </v-col>
+
+                                    <!-- Dirección -->
+                                    <v-col cols="12">
+                                        <v-text-field
+                                            v-model="empresaForm.direccion"
+                                            label="Dirección"
+                                            prepend-inner-icon="mdi-home"
+                                            :rules="[v => !!v || 'La dirección es obligatoria']"
+                                            maxlength="200"
+                                            required
+                                            variant="outlined"
+                                            density="compact"
+                                        />
+                                    </v-col>
+
+                                    <!-- Teléfono -->
+                                    <v-col cols="12" md="6">
+                                        <v-text-field
+                                            v-model="empresaForm.telefono"
+                                            label="Teléfono"
+                                            prepend-inner-icon="mdi-phone"
+                                            :rules="[v => !!v || 'El teléfono es obligatorio']"
+                                            maxlength="20"
+                                            required
+                                            variant="outlined"
+                                            density="compact"
+                                        />
+                                    </v-col>
+
+                                    <!-- Correo Electrónico -->
+                                    <v-col cols="12" md="6">
+                                        <v-text-field
+                                            v-model="empresaForm.email"
+                                            label="Correo Electrónico"
+                                            prepend-inner-icon="mdi-email"
+                                            type="email"
+                                            :rules="[
+                                                v => !!v || 'El correo es obligatorio',
+                                                v => /.+@.+\..+/.test(v) || 'El correo debe ser válido'
+                                            ]"
+                                            maxlength="100"
+                                            required
+                                            variant="outlined"
+                                            density="compact"
+                                        />
+                                    </v-col>
+                                </v-row>
+                            </v-col>
+                        </v-row>
+
+                        <!-- Divider antes del footer -->
+                        <v-divider class="my-4" />
+
+                        <!-- Footer con botones -->
+                        <div class="d-flex justify-end ga-3">
+                            <v-btn
+                                type="submit"
+                                color="primary"
+                                variant="tonal"
+                                :loading="saving"
+                                :disabled="saving"
+                                prepend-icon="mdi-content-save"
+                                class="text-none"
+                            >
+                                {{ saving ? 'Guardando...' : 'Guardar' }}
+                            </v-btn>
+                        </div>
+                    </v-form>
+                </v-card-text>
+            </v-card>
+        </v-container>
     </AuthenticatedLayout>
 </template>

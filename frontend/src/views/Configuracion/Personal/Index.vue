@@ -1,22 +1,18 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/components/Layouts/AuthenticatedLayout.vue';
-import { ref, reactive, computed, onMounted, onBeforeUnmount, onActivated, watch, nextTick } from 'vue';
-import apiClient from '@/api/axios';
-// @ts-expect-error -- tabulator-tables no proporciona tipos ES module
-import { TabulatorFull as Tabulator } from 'tabulator-tables';
+import { ref, reactive, computed, onMounted, onActivated, watch } from 'vue';
 import * as XLSX from 'xlsx';
 import type { Personal } from '@/types/configuracion';
 import AppModal from '@/components/Partial/AppModal.vue';
-import TableCard from '@/components/Table/TableCard.vue';
+import VDataTableCard from '@/components/Table/VDataTableCard.vue';
 import { notificacion } from '@/utils/notificacion';
-
-const tableEl = ref<HTMLElement | null>(null);
-const table = ref<any | null>(null);
-const personal = ref<Personal[]>([]);
-const loading = ref(false);
-const searchQuery = ref('');
-const columnMenu = ref<{ title: string; field: string; visible: boolean }[]>([]);
-const recordSummary = ref('Mostrando 0 registros');
+import { useImageUpload } from '@/composables/useImageUpload';
+import { useVuetifyTable } from '@/composables/useVuetifyTable';
+import apiClient from '@/api/axios';
+import {
+    formatStatusChip,
+    formatTipoContratacionChip,
+} from '@/utils/vuetifyTableHelpers';
 
 // Selects para dropdowns
 const tiposPersonal = ref<{ id: number; text: string }[]>([]);
@@ -24,19 +20,7 @@ const tiposDocumento = ref<{ id: number; text: string }[]>([]);
 const proveedores = ref<{ id: number; text: string }[]>([]);
 const ubigeos = ref<{ id: string; text: string }[]>([]);
 
-function closeAllActionDropdowns() {
-    document.querySelectorAll('.tabulator .actions-menu__dropdown.show').forEach((menu) => {
-        menu.classList.remove('show');
-    });
-}
-
-function handleGlobalClick(e: MouseEvent) {
-    const target = e.target as HTMLElement;
-    if (!target.closest('.tabulator .btn-group')) {
-        closeAllActionDropdowns();
-    }
-}
-
+// Form
 const saveForm = reactive({
     id_tipo_personal: '',
     id_tipo_documento: '',
@@ -49,10 +33,9 @@ const saveForm = reactive({
     comentario: '',
     id_proveedor: '',
 });
-const imagenFile = ref<File | null>(null);
-const firmaFile = ref<File | null>(null);
-const imagenPreview = ref<string>('');
-const firmaPreview = ref<string>('');
+
+const imagenUpload = useImageUpload('/images/sin_imagen.jpg');
+const firmaUpload = useImageUpload('/images/sin_imagen.jpg');
 const showSaveModal = ref(false);
 const showDeleteModal = ref(false);
 const editingId = ref<number | null>(null);
@@ -66,128 +49,65 @@ const saveModalTitle = computed(() =>
 
 const isProveedorEnabled = computed(() => saveForm.tipo_contratacion === 'TERCERO');
 
-const columns = [
+// Headers de la tabla
+const headers = [
     {
         title: 'ACCIONES',
-        field: '_actions',
-        width: 120,
-        headerHozAlign: 'center',
-        hozAlign: 'center',
-        resizable: false,
-        headerSort: false,
-        formatter: () => `
-            <div class="btn-group actions-menu" style="position: relative;">
-                <button
-                    class="btn btn-sm btn-primary"
-                    type="button"
-                    data-action="edit"
-                >
-                    Editar
-                </button>
-                <button
-                    class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split actions-menu__toggle"
-                    type="button"
-                    data-action="toggle-menu"
-                >
-                    <span class="visually-hidden">Toggle Dropdown</span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-start actions-menu__dropdown" style="position: absolute; left: 0; top: 100%; margin-top: 0.125rem; min-width: 180px; z-index: 1000;">
-                    <button type="button" class="dropdown-item text-danger" data-action="delete">
-                        <i class="ti ti-trash me-2"></i>Eliminar
-                    </button>
-                </div>
-            </div>
-        `,
-        cellClick: handleActionCellClick,
+        key: 'actions',
+        sortable: false,
+        width: '150px',
     },
     {
         title: 'TIPO PERSONAL',
-        field: 'nombre_tipo_personal',
-        width: 180,
-        headerSort: true,
-        formatter: 'plaintext',
+        key: 'nombre_tipo_personal',
+        sortable: true,
+        width: '180px',
     },
     {
-        title: 'NOMBRE',
-        field: 'nombre',
-        minWidth: 150,
-        headerSort: true,
-        formatter: 'plaintext',
+        title: 'DOCUMENTO',
+        key: 'numero_documento',
+        sortable: true,
+        width: '150px',
     },
     {
-        title: 'APELLIDO',
-        field: 'apellido',
-        minWidth: 150,
-        headerSort: true,
-        formatter: 'plaintext',
+        title: 'NOMBRES',
+        key: 'nombre',
+        sortable: true,
     },
     {
-        title: 'DIRECCIÓN',
-        field: 'direccion',
-        width: 250,
-        formatter: (cell: any) => {
-            const direccion = cell.getValue() || '';
-            if (!direccion) return '—';
-            return `<div style="max-width: 250px; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.4;">${direccion}</div>`;
-        },
+        title: 'APELLIDOS',
+        key: 'apellido',
+        sortable: true,
     },
     {
         title: 'TIPO CONTRATACIÓN',
-        field: 'tipo_contratacion',
-        width: 150,
-        headerHozAlign: 'center',
-        hozAlign: 'center',
-        formatter: (cell: any) => {
-            const value = cell.getValue();
-            const config: Record<string, { label: string; className: string }> = {
-                DIRECTA: {
-                    label: 'DIRECTA',
-                    className: 'badge rounded-pill px-3 bg-blue-lt text-blue fw-semibold',
-                },
-                TERCERO: {
-                    label: 'TERCERO',
-                    className: 'badge rounded-pill px-3 bg-orange-lt text-orange fw-semibold',
-                },
-            };
-
-            const { label, className } = config[value] ?? {
-                label: value || '—',
-                className: 'badge rounded-pill px-3 bg-gray-lt text-secondary fw-semibold',
-            };
-
-            return `<span class="${className}">${label}</span>`;
-        },
+        key: 'tipo_contratacion',
+        sortable: true,
+        align: 'center' as const,
+        width: '180px',
     },
     {
         title: 'ESTADO',
-        field: 'estado',
-        width: 120,
-        headerHozAlign: 'center',
-        hozAlign: 'center',
-        formatter: (cell: any) => {
-            const value = Number(cell.getValue());
-            const statusConfig: Record<number, { label: string; className: string }> = {
-                1: {
-                    label: 'ACTIVO',
-                    className: 'badge rounded-pill px-3 bg-green-lt text-green fw-semibold',
-                },
-                0: {
-                    label: 'INACTIVO',
-                    className: 'badge rounded-pill px-3 bg-red-lt text-red fw-semibold',
-                },
-            };
-
-            const { label, className } =
-                statusConfig[value] ?? {
-                    label: 'SIN ESTADO',
-                    className: 'badge rounded-pill px-3 bg-gray-lt text-secondary fw-semibold',
-                };
-
-            return `<span class="${className}">${label}</span>`;
-        },
+        key: 'estado',
+        sortable: true,
+        align: 'center' as const,
+        width: '120px',
     },
 ];
 
+// Composable de tabla
+const table = useVuetifyTable<Personal>({
+    apiURL: '/configuracion/personal',
+    searchFields: ['nombre', 'apellido', 'nombre_tipo_personal'],
+    serverSidePagination: false,
+    serverSideSorting: false,
+    serverSideSearch: false,
+});
+
+// Inicializar menú de columnas
+table.updateColumnMenu(headers);
+
+// Funciones para selects
 async function loadSelects() {
     try {
         const [tiposPersonalRes, tiposDocumentoRes, proveedoresRes, ubigeosRes] = await Promise.all([
@@ -206,137 +126,18 @@ async function loadSelects() {
     }
 }
 
-async function initializeTable() {
-    await nextTick();
-    if (!tableEl.value) return;
-
-    table.value = new Tabulator(tableEl.value, {
-        layout: 'fitColumns',
-        reactiveData: false,
-        placeholder: 'No se encontraron registros',
-        columns,
-        printHeader: '<h4 class="mb-3">Listado de personal</h4>',
-        printFooter: '<small>Generado desde la intranet</small>',
-        height: 'calc(100vh - 360px)',
-        columnDefaults: {
-            resizable: true,
-        },
-        ajaxURL: 'configuracion/personal',
-        ajaxContentType: 'json',
-        ajaxRequestFunc: async (url: string) => {
-            const response = await apiClient.get(url);
-            return response.data;
-        },
-        ajaxResponse: (_url: string, _params: any, response: any) => {
-            const data: Personal[] = response?.data ?? [];
-            personal.value = data;
-            loading.value = false;
-            updateRecordSummary();
-            return data;
-        },
-    });
-
-    table.value.on('dataLoading', () => {
-        loading.value = true;
-    });
-    table.value.on('tableBuilt', prepareColumnMenu);
-    table.value.on('dataLoaded', updateRecordSummary);
-    table.value.on('dataFiltered', updateRecordSummary);
-    table.value.on('columnVisibilityChanged', prepareColumnMenu);
-}
-
-function prepareColumnMenu() {
-    if (!table.value) return;
-    columnMenu.value = table.value.getColumns().map((column: any) => ({
-        title: column.getDefinition().title ?? '',
-        field: column.getField(),
-        visible: column.isVisible(),
-    }));
-}
-
-function handleActionCellClick(e: MouseEvent, cell: any) {
-    const target = e.target as HTMLElement;
-    const toggleButton = target.closest('button[data-action="toggle-menu"]');
-
-    if (toggleButton) {
-        e.stopPropagation();
-        const group = toggleButton.closest('.actions-menu');
-        const menu = group?.querySelector('.actions-menu__dropdown');
-        const isOpen = menu?.classList.contains('show');
-        closeAllActionDropdowns();
-        if (!isOpen) {
-            menu?.classList.add('show');
-        }
-        return;
-    }
-
-    const actionBtn = target.closest('button[data-action]');
-    if (!actionBtn) return;
-
-    e.stopPropagation();
-    closeAllActionDropdowns();
-    const action = actionBtn.getAttribute('data-action');
-    const data = cell.getRow().getData() as Personal;
-
-    if (action === 'edit') {
-        openEditModal(data);
-    }
-
-    if (action === 'delete') {
-        openDeleteModal(data);
-    }
-}
-
-async function reloadTable() {
-    if (!table.value) return;
-    loading.value = true;
-    await table.value.replaceData('configuracion/personal');
-    applySearch(searchQuery.value);
-    updateRecordSummary();
-}
-
-function applySearch(query: string) {
-    const normalized = query.trim().toLowerCase();
-    if (!table.value) return;
-
-    if (!normalized) {
-        table.value.clearFilter(true);
-    } else {
-        table.value.setFilter((rowData: Personal) => {
-            const values = [rowData.nombre, rowData.apellido, rowData.nombre_tipo_personal];
-            return values.some((value) => value?.toLowerCase().includes(normalized));
-        });
-    }
-
-    updateRecordSummary();
-}
-
-function updateRecordSummary() {
-    if (!table.value) {
-        recordSummary.value = 'Mostrando 0 registros';
-        return;
-    }
-
-    const filteredRows = table.value.getRows(true).length;
-    const totalRows = table.value.getData().length || personal.value.length;
-    recordSummary.value = `Mostrando ${filteredRows} de ${totalRows} registros`;
-}
-
+// Funciones de modales
 async function openCreateModal() {
     editingId.value = null;
     resetSaveForm();
-    imagenPreview.value = '';
-    firmaPreview.value = '';
-    imagenFile.value = null;
-    firmaFile.value = null;
-    // Recargar selects antes de abrir el modal
+    imagenUpload.reset();
+    firmaUpload.reset();
     await loadSelects();
     showSaveModal.value = true;
 }
 
 async function openEditModal(personalData: Personal) {
     editingId.value = personalData.id;
-    // Recargar selects antes de abrir el modal
     await loadSelects();
     
     saveForm.id_tipo_personal = personalData.id_tipo_personal ? String(personalData.id_tipo_personal) : '';
@@ -350,18 +151,19 @@ async function openEditModal(personalData: Personal) {
     saveForm.comentario = personalData.comentario || '';
     saveForm.id_proveedor = personalData.id_proveedor ? String(personalData.id_proveedor) : '';
 
-    imagenFile.value = null;
-    firmaFile.value = null;
+    imagenUpload.file.value = null;
+    firmaUpload.file.value = null;
 
     if (personalData.imagen) {
-        imagenPreview.value = `/storage/personales/${personalData.imagen}`;
+        imagenUpload.setPreview(`/storage/personales/${personalData.imagen}`);
     } else {
-        imagenPreview.value = '/images/sin_imagen.jpg';
+        imagenUpload.setPreview('/images/sin_imagen.jpg');
     }
+    
     if (personalData.firma) {
-        firmaPreview.value = `/storage/personales/${personalData.firma}`;
+        firmaUpload.setPreview(`/storage/personales/${personalData.firma}`);
     } else {
-        firmaPreview.value = '/images/sin_imagen.jpg';
+        firmaUpload.setPreview('/images/sin_imagen.jpg');
     }
 
     showSaveModal.value = true;
@@ -372,27 +174,17 @@ function openDeleteModal(personalData: Personal) {
     showDeleteModal.value = true;
 }
 
-function handleImageChange(event: Event, type: 'imagen' | 'firma') {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (!file) return;
-
-    if (type === 'imagen') {
-        imagenFile.value = file;
-    } else {
-        firmaFile.value = file;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const result = e.target?.result as string;
-        if (type === 'imagen') {
-            imagenPreview.value = result;
-        } else {
-            firmaPreview.value = result;
-        }
-    };
-    reader.readAsDataURL(file);
+function resetSaveForm() {
+    saveForm.id_tipo_personal = '';
+    saveForm.id_tipo_documento = '';
+    saveForm.numero_documento = '';
+    saveForm.nombre = '';
+    saveForm.apellido = '';
+    saveForm.tipo_contratacion = 'DIRECTA';
+    saveForm.direccion = '';
+    saveForm.ubigeo = '';
+    saveForm.comentario = '';
+    saveForm.id_proveedor = '';
 }
 
 async function handleSaveSubmit() {
@@ -468,12 +260,12 @@ async function handleSaveSubmit() {
         formData.append('id_proveedor', String(Number(saveForm.id_proveedor)));
     }
 
-    if (imagenFile.value) {
-        formData.append('imagen', imagenFile.value);
+    if (imagenUpload.file.value) {
+        formData.append('imagen', imagenUpload.file.value);
     }
 
-    if (firmaFile.value) {
-        formData.append('imagen_firma', firmaFile.value);
+    if (firmaUpload.file.value) {
+        formData.append('imagen_firma', firmaUpload.file.value);
     }
 
     saving.value = true;
@@ -492,7 +284,7 @@ async function handleSaveSubmit() {
         }
 
         showSaveModal.value = false;
-        await reloadTable();
+        await table.reloadTable();
     } catch (error: any) {
         if (error.response?.data?.errors) {
             const errors = error.response.data.errors;
@@ -517,7 +309,7 @@ async function handleDeleteConfirm() {
         await apiClient.delete(`/configuracion/personal/${deleteTarget.value.id}`);
         notificacion('Personal eliminado correctamente.', { type: 'success' });
         showDeleteModal.value = false;
-        await reloadTable();
+        await table.reloadTable();
     } catch (error: any) {
         const message = error.response?.data?.message || 'No fue posible eliminar el registro.';
         notificacion(message, { type: 'danger', title: 'Error' });
@@ -526,390 +318,414 @@ async function handleDeleteConfirm() {
     }
 }
 
-function downloadExcel() {
-    if (!table.value) return;
-    // @ts-ignore Assign XLSX global
-    (window as any).XLSX = XLSX;
-    table.value.download('xlsx', 'personal.xlsx', { sheetName: 'Personal' });
-}
+// Funciones
+const updateSearchValue = (value: string) => {
+    table.searchQuery.value = value;
+    table.applySearch(value);
+};
 
-function printTable() {
-    table.value?.print(false, true);
-}
+const downloadExcel = () => {
+    table.downloadExcel('personal.xlsx', 'Personal');
+};
 
-function toggleColumnVisibility(field: string) {
-    if (!table.value) return;
-    const column = table.value.getColumn(field);
-    if (!column) return;
+const toggleColumnVisibility = (key: string) => {
+    table.toggleColumnVisibility(key);
+};
 
-    column.toggle();
-    columnMenu.value = columnMenu.value.map((item) =>
-        item.field === field ? { ...item, visible: column.isVisible() } : item,
-    );
-}
-
-function resetSaveForm() {
-    saveForm.id_tipo_personal = '';
-    saveForm.id_tipo_documento = '';
-    saveForm.numero_documento = '';
-    saveForm.nombre = '';
-    saveForm.apellido = '';
-    saveForm.tipo_contratacion = 'DIRECTA';
-    saveForm.direccion = '';
-    saveForm.ubigeo = '';
-    saveForm.comentario = '';
-    saveForm.id_proveedor = '';
-}
-
-function closeSaveModal() {
-    if (saving.value) return;
-    showSaveModal.value = false;
-}
-
-function closeDeleteModal() {
-    if (deleting.value) return;
-    showDeleteModal.value = false;
-}
-
-function updateSearchValue(value: string) {
-    searchQuery.value = value;
-}
-
-onMounted(async () => {
-    // @ts-ignore expose for Tabulator download module
-    (window as any).XLSX = XLSX;
-    await loadSelects();
-    await initializeTable();
-    // No llamar reloadTable() aquí - la tabla ya carga datos automáticamente con ajaxURL
-    document.addEventListener('click', handleGlobalClick);
-});
-
-// Recargar selects cuando el componente se activa (al volver a la página)
-onActivated(async () => {
-    await loadSelects();
-});
-
-watch(searchQuery, (value) => {
-    applySearch(value);
-});
-
+// Watchers
 watch(() => saveForm.tipo_contratacion, (value) => {
     if (value !== 'TERCERO') {
         saveForm.id_proveedor = '';
     }
 });
 
-onBeforeUnmount(() => {
-    table.value?.destroy();
-    document.removeEventListener('click', handleGlobalClick);
+// Lifecycle
+onMounted(async () => {
+    (window as any).XLSX = XLSX;
+    await loadSelects();
+    await table.loadItems({
+        page: 1,
+        itemsPerPage: 10,
+    });
+});
+
+onActivated(async () => {
+    await loadSelects();
 });
 </script>
 
 <template>
     <AuthenticatedLayout>
-        <template #header>
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                <div>
-                    <h1 class="h2 mb-1">Configuración / Personal</h1>
-                    <p class="text-secondary mb-0">
-                        Gestiona el personal; crea, edita o elimina según necesidad.
-                    </p>
-                </div>
-                <div class="btn-group">
-                    <button
-                        type="button"
-                        class="btn btn-primary d-flex align-items-center gap-2"
-                        @click="openCreateModal"
-                    >
-                        <i class="ti ti-plus"></i>
-                        Nuevo
-                    </button>
-                </div>
-            </div>
-        </template>
-
-        <div class="personal-page">
-            <TableCard
-                :loading="loading"
-                :column-menu="columnMenu"
-                :search-value="searchQuery"
-                search-placeholder="Buscar personal..."
-                @print="printTable"
-                @export="downloadExcel"
-                @toggle-column="toggleColumnVisibility"
-                @update:search="updateSearchValue"
-            >
-                <div ref="tableEl" class="tabulator-wrapper"></div>
-
-                <template #footer-left>
-                    <span>{{ recordSummary }}</span>
-                </template>
-                <template #footer-right>
-                    <span>Actualizado automáticamente al guardar cambios.</span>
-                </template>
-            </TableCard>
-        </div>
-
-        <AppModal
-            :open="showSaveModal"
-            :title="saveModalTitle"
-            size="xl"
-            @close="closeSaveModal"
-        >
-            <template #body>
-                <form class="space-y-3" @submit.prevent>
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="row">
-                                <div class="col-12 mb-3" align="center">
-                                    <div class="mb-2">
-                                        <img
-                                            :key="`imagen-${editingId || 'new'}-${imagenPreview}`"
-                                            :src="imagenPreview || '/images/sin_imagen.jpg'"
-                                            alt="Imagen"
-                                            class="img-fluid rounded"
-                                            style="max-width: 100%; max-height: 200px; object-fit: cover; border: 1px solid #dee2e6;"
-                                            @error="(e: Event) => { 
-                                                const img = e.target as HTMLImageElement;
-                                                if (img.src && !img.src.includes('data:') && img.src !== 'data:image/svg+xml') {
-                                                    img.src = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Crect fill=\'%23ddd\' width=\'200\' height=\'200\'/%3E%3Ctext fill=\'%23999\' font-family=\'sans-serif\' font-size=\'14\' dy=\'10.5\' font-weight=\'bold\' x=\'50%25\' y=\'50%25\' text-anchor=\'middle\'%3ESin Imagen%3C/text%3E%3C/svg%3E';
-                                                }
-                                            }"
-                                        />
-                                    </div>
-                                    <label class="btn btn-default btn-sm w-100">
-                                        <i class="ti ti-upload me-1"></i> Examinar
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            style="display: none;"
-                                            @change="(e) => handleImageChange(e, 'imagen')"
-                                        />
-                                    </label>
-                                </div>
-                                <div class="col-12" align="center">
-                                    <div class="mb-2">
-                                        <img
-                                            :key="`firma-${editingId || 'new'}-${firmaPreview}`"
-                                            :src="firmaPreview || '/images/sin_imagen.jpg'"
-                                            alt="Firma"
-                                            class="img-fluid rounded"
-                                            style="max-width: 100%; max-height: 150px; object-fit: cover; border: 1px solid #dee2e6;"
-                                            @error="(e: Event) => { 
-                                                const img = e.target as HTMLImageElement;
-                                                if (img.src && !img.src.includes('data:') && img.src !== 'data:image/svg+xml') {
-                                                    img.src = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Crect fill=\'%23ddd\' width=\'200\' height=\'200\'/%3E%3Ctext fill=\'%23999\' font-family=\'sans-serif\' font-size=\'14\' dy=\'10.5\' font-weight=\'bold\' x=\'50%25\' y=\'50%25\' text-anchor=\'middle\'%3ESin Imagen%3C/text%3E%3C/svg%3E';
-                                                }
-                                            }"
-                                        />
-                                    </div>
-                                    <label class="btn btn-default btn-sm w-100">
-                                        <i class="ti ti-upload me-1"></i> Firma Virtual
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            style="display: none;"
-                                            @change="(e) => handleImageChange(e, 'firma')"
-                                        />
-                                    </label>
-                                </div>
-                            </div>
+        <v-container fluid class="pa-4">
+            <!-- Header Section -->
+            <v-card class="mb-4" rounded="lg" elevation="1">
+                <v-card-text class="pa-4">
+                    <div class="d-flex flex-wrap align-center justify-space-between ga-4">
+                        <div>
+                            <h1 class="text-h5 font-weight-bold mb-2">Personal</h1>
+                            <p class="text-body-2 text-medium-emphasis mb-0">
+                                Gestiona el personal; crea, edita o elimina según necesidad.
+                            </p>
                         </div>
-                        <div class="col-md-9">
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label required" for="personal-tipo">Tipo de Personal</label>
-                                    <select
-                                        id="personal-tipo"
-                                        v-model="saveForm.id_tipo_personal"
-                                        class="form-select"
-                                        required
-                                    >
-                                        <option value="">Seleccionar...</option>
-                                        <option
-                                            v-for="tipo in tiposPersonal"
-                                            :key="tipo.id"
-                                            :value="String(tipo.id)"
-                                        >
-                                            {{ tipo.text }}
-                                        </option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label required" for="personal-documento">Documento</label>
-                                    <select
-                                        id="personal-documento"
-                                        v-model="saveForm.id_tipo_documento"
-                                        class="form-select"
-                                        required
-                                    >
-                                        <option value="">Seleccionar...</option>
-                                        <option
-                                            v-for="doc in tiposDocumento"
-                                            :key="doc.id"
-                                            :value="String(doc.id)"
-                                        >
-                                            {{ doc.text }}
-                                        </option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label required" for="personal-numero-doc">Número Doc.</label>
-                                    <input
-                                        id="personal-numero-doc"
-                                        v-model="saveForm.numero_documento"
-                                        type="text"
-                                        class="form-control"
-                                        maxlength="20"
-                                        placeholder="Número de documento"
-                                        required
-                                    />
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label required" for="personal-nombre">Nombres</label>
-                                    <input
-                                        id="personal-nombre"
-                                        v-model="saveForm.nombre"
-                                        type="text"
-                                        class="form-control"
-                                        maxlength="200"
-                                        placeholder="Nombres"
-                                        required
-                                    />
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label required" for="personal-apellido">Apellidos</label>
-                                    <input
-                                        id="personal-apellido"
-                                        v-model="saveForm.apellido"
-                                        type="text"
-                                        class="form-control"
-                                        maxlength="200"
-                                        placeholder="Apellidos"
-                                        required
-                                    />
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <label class="form-label required" for="personal-contratacion">Tipo Contratación</label>
-                                    <select
-                                        id="personal-contratacion"
-                                        v-model="saveForm.tipo_contratacion"
-                                        class="form-select"
-                                        required
-                                    >
-                                        <option value="DIRECTA">DIRECTA</option>
-                                        <option value="TERCERO">TERCERO</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-9 mb-3">
-                                    <label class="form-label" for="personal-direccion">Dirección</label>
-                                    <input
-                                        id="personal-direccion"
-                                        v-model="saveForm.direccion"
-                                        type="text"
-                                        class="form-control"
-                                        maxlength="100"
-                                        placeholder="Dirección"
-                                    />
-                                </div>
-                                <div class="col-md-12 mb-3">
-                                    <label class="form-label" :class="{ required: isProveedorEnabled }" for="personal-proveedor">Proveedor</label>
-                                    <select
-                                        id="personal-proveedor"
-                                        v-model="saveForm.id_proveedor"
-                                        class="form-select"
-                                        :disabled="!isProveedorEnabled"
-                                        :required="isProveedorEnabled"
-                                    >
-                                        <option value="">Seleccionar...</option>
-                                        <option
-                                            v-for="prov in proveedores"
-                                            :key="prov.id"
-                                            :value="String(prov.id)"
-                                        >
-                                            {{ prov.text }}
-                                        </option>
-                                    </select>
-                                </div>
-                                <div class="col-md-12 mb-3">
-                                    <label class="form-label" for="personal-ubigeo">UBIGEO - (Departamento - Provincia - Distrito)</label>
-                                    <select
-                                        id="personal-ubigeo"
-                                        v-model="saveForm.ubigeo"
-                                        class="form-select"
-                                    >
-                                        <option value="">Seleccionar...</option>
-                                        <option
-                                            v-for="ubigeo in ubigeos"
-                                            :key="ubigeo.id"
-                                            :value="ubigeo.id"
-                                        >
-                                            {{ ubigeo.text }}
-                                        </option>
-                                    </select>
-                                </div>
-                                <div class="col-md-12 mb-0">
-                                    <label class="form-label" for="personal-comentario">Comentario</label>
-                                    <input
-                                        id="personal-comentario"
-                                        v-model="saveForm.comentario"
-                                        type="text"
-                                        class="form-control"
-                                        maxlength="100"
-                                        placeholder="Comentario"
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                        <v-btn
+                            color="primary"
+                            prepend-icon="mdi-plus"
+                            variant="flat"
+                            size="default"
+                            @click="openCreateModal"
+                            aria-label="Crear nuevo personal"
+                            class="text-none"
+                        >
+                            Nuevo Personal
+                        </v-btn>
                     </div>
-                </form>
-            </template>
-            <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button type="button" class="btn btn-default btn-sm pull-left" @click="closeSaveModal">
-                        <i class="fa fa-times"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-primary btn-sm"
-                        :disabled="saving"
-                        @click="handleSaveSubmit"
-                    >
-                        <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
-                        {{ editingId ? 'Actualizar' : 'Guardar' }}
-                    </button>
-                </div>
-            </template>
-        </AppModal>
+                </v-card-text>
+            </v-card>
 
-        <AppModal
-            :open="showDeleteModal"
-            title="Eliminar personal"
-            size="sm"
-            @close="closeDeleteModal"
-        >
-            <template #body>
-                <p class="mb-0">
-                    ¿Seguro que deseas eliminar el personal
-                    <strong>{{ deleteTarget?.nombre }} {{ deleteTarget?.apellido }}</strong>? Esta acción no se puede deshacer.
-                </p>
-            </template>
-            <template #footer>
-                <div class="d-flex justify-content-between w-100">
-                    <button type="button" class="btn btn-default btn-sm pull-left" @click="closeDeleteModal">
-                        <i class="fa fa-times"></i> Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-danger btn-sm"
-                        :disabled="deleting"
-                        @click="handleDeleteConfirm"
+            <!-- Table Section -->
+            <v-card rounded="lg" elevation="1">
+                <VDataTableCard
+                    :loading="table.loading.value"
+                    :column-menu="table.columnMenu.value"
+                    :search-value="table.searchQuery.value"
+                    search-placeholder="Buscar personal..."
+                    @print="table.printTable"
+                    @export="downloadExcel"
+                    @toggle-column="toggleColumnVisibility"
+                    @update:search="updateSearchValue"
+                >
+                    <v-data-table-server
+                        v-model:page="table.page.value"
+                        v-model:items-per-page="table.itemsPerPage.value"
+                        v-model:sort-by="table.sortBy.value"
+                        :headers="headers.filter(h => table.columnMenu.value.find(c => c.key === h.key)?.visible !== false)"
+                        :items="table.items.value"
+                        :loading="table.loading.value"
+                        :items-length="table.totalItems.value"
+                        :density="'compact'"
+                        :fixed-header="true"
+                        height="450"
+                        :items-per-page-options="[]"
+                        hide-default-footer
+                        @update:options="table.loadItems"
+                        class="elevation-0"
                     >
-                        <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
-                        Eliminar
-                    </button>
-                </div>
-            </template>
-        </AppModal>
+                        <template #item.actions="{ item }">
+                            <div class="d-flex align-center ga-1">
+                                <v-btn
+                                    icon="mdi-pencil"
+                                    size="small"
+                                    color="primary"
+                                    variant="flat"
+                                    @click="openEditModal(item)"
+                                />
+                                <v-menu>
+                                    <template #activator="{ props: menuProps }">
+                                        <v-btn
+                                            v-bind="menuProps"
+                                            icon="mdi-dots-vertical"
+                                            size="small"
+                                            color="grey-darken-1"
+                                            variant="text"
+                                        />
+                                    </template>
+                                    <v-list density="compact">
+                                        <v-list-item
+                                            prepend-icon="mdi-delete"
+                                            title="Eliminar"
+                                            class="text-error"
+                                            @click="openDeleteModal(item)"
+                                        />
+                                    </v-list>
+                                </v-menu>
+                            </div>
+                        </template>
+
+                        <template #item.tipo_contratacion="{ value }">
+                            <v-chip
+                                :color="formatTipoContratacionChip(value).color"
+                                size="small"
+                                variant="flat"
+                                class="text-uppercase font-weight-medium"
+                            >
+                                {{ formatTipoContratacionChip(value).label }}
+                            </v-chip>
+                        </template>
+
+                        <template #item.estado="{ value }">
+                            <v-chip
+                                :color="formatStatusChip(value).color"
+                                size="small"
+                                variant="flat"
+                                class="text-uppercase font-weight-medium"
+                            >
+                                {{ formatStatusChip(value).label }}
+                            </v-chip>
+                        </template>
+                    </v-data-table-server>
+
+                    <template #footer-left>
+                        <span class="text-body-2 text-medium-emphasis">{{ table.recordSummary.value }}</span>
+                    </template>
+                    <template #footer-right>
+                        <span class="text-body-2 text-medium-emphasis">Actualizado automáticamente</span>
+                    </template>
+                </VDataTableCard>
+            </v-card>
+
+            <!-- Save/Edit Modal -->
+            <AppModal
+                v-model:open="showSaveModal"
+                :title="saveModalTitle"
+                size="xl"
+            >
+                <template #body>
+                    <v-container fluid class="pa-4">
+                        <v-form @submit.prevent>
+                            <v-row>
+                                <v-col cols="12" md="3">
+                                    <v-card variant="outlined" class="pa-3" rounded="md">
+                                        <div class="text-center mb-3">
+                                            <label class="text-body-2 font-weight-medium mb-2 d-block">Foto del Personal</label>
+                                            <v-img
+                                                :src="imagenUpload.preview.value || '/images/sin_imagen.jpg'"
+                                                alt="Imagen"
+                                                class="mx-auto"
+                                                rounded="md"
+                                                max-width="200"
+                                                max-height="200"
+                                                contain
+                                                style="border: 1px solid rgba(0,0,0,0.12);"
+                                            />
+                                        </div>
+                                        <v-file-input
+                                            label="Examinar Foto"
+                                            prepend-icon="mdi-camera"
+                                            variant="outlined"
+                                            density="compact"
+                                            accept="image/*"
+                                            @change="imagenUpload.handleChange"
+                                            hide-details
+                                        />
+                                    </v-card>
+                                    <v-card variant="outlined" class="pa-3 mt-3" rounded="md">
+                                        <div class="text-center mb-3">
+                                            <label class="text-body-2 font-weight-medium mb-2 d-block">Firma</label>
+                                            <v-img
+                                                :src="firmaUpload.preview.value || '/images/sin_imagen.jpg'"
+                                                alt="Firma"
+                                                class="mx-auto"
+                                                rounded="md"
+                                                max-width="200"
+                                                max-height="200"
+                                                contain
+                                                style="border: 1px solid rgba(0,0,0,0.12);"
+                                            />
+                                        </div>
+                                        <v-file-input
+                                            label="Examinar Firma"
+                                            prepend-icon="mdi-camera"
+                                            variant="outlined"
+                                            density="compact"
+                                            accept="image/*"
+                                            @change="firmaUpload.handleChange"
+                                            hide-details
+                                        />
+                                    </v-card>
+                                </v-col>
+                                <v-col cols="12" md="9">
+                                    <v-row>
+                                        <v-col cols="12" md="4">
+                                            <v-select
+                                                v-model="saveForm.id_tipo_personal"
+                                                label="Tipo de Personal"
+                                                :items="tiposPersonal.map(t => ({ title: t.text, value: String(t.id) }))"
+                                                :rules="[(v) => !!v || 'El tipo de personal es obligatorio']"
+                                                required
+                                                clearable
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12" md="4">
+                                            <v-select
+                                                v-model="saveForm.id_tipo_documento"
+                                                label="Tipo de Documento"
+                                                :items="tiposDocumento.map(d => ({ title: d.text, value: String(d.id) }))"
+                                                :rules="[(v) => !!v || 'El tipo de documento es obligatorio']"
+                                                required
+                                                clearable
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12" md="4">
+                                            <v-text-field
+                                                v-model="saveForm.numero_documento"
+                                                label="Número de Documento"
+                                                :rules="[(v) => !!v || 'El número de documento es obligatorio']"
+                                                maxlength="20"
+                                                required
+                                                counter
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12" md="6">
+                                            <v-text-field
+                                                v-model="saveForm.nombre"
+                                                label="Nombres"
+                                                :rules="[(v) => !!v || 'El nombre es obligatorio']"
+                                                maxlength="200"
+                                                required
+                                                counter
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12" md="6">
+                                            <v-text-field
+                                                v-model="saveForm.apellido"
+                                                label="Apellidos"
+                                                :rules="[(v) => !!v || 'El apellido es obligatorio']"
+                                                maxlength="200"
+                                                required
+                                                counter
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12" md="3">
+                                            <v-select
+                                                v-model="saveForm.tipo_contratacion"
+                                                label="Tipo de Contratación"
+                                                :items="[
+                                                    { title: 'DIRECTA', value: 'DIRECTA' },
+                                                    { title: 'TERCERO', value: 'TERCERO' },
+                                                ]"
+                                                :rules="[(v) => !!v || 'El tipo de contratación es obligatorio']"
+                                                required
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12" md="9">
+                                            <v-text-field
+                                                v-model="saveForm.direccion"
+                                                label="Dirección"
+                                                maxlength="100"
+                                                counter
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12">
+                                            <v-select
+                                                v-model="saveForm.id_proveedor"
+                                                label="Proveedor"
+                                                :items="proveedores.map(p => ({ title: p.text, value: String(p.id) }))"
+                                                :required="isProveedorEnabled"
+                                                :disabled="!isProveedorEnabled"
+                                                clearable
+                                                variant="outlined"
+                                                density="compact"
+                                                :hint="isProveedorEnabled ? 'Obligatorio cuando el tipo de contratación es TERCERO' : 'Solo disponible para tipo TERCERO'"
+                                                persistent-hint
+                                            />
+                                        </v-col>
+                                        <v-col cols="12">
+                                            <v-select
+                                                v-model="saveForm.ubigeo"
+                                                label="UBIGEO (Departamento - Provincia - Distrito)"
+                                                :items="ubigeos.map(u => ({ title: u.text, value: u.id }))"
+                                                clearable
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                        <v-col cols="12">
+                                            <v-textarea
+                                                v-model="saveForm.comentario"
+                                                label="Comentario"
+                                                maxlength="100"
+                                                counter
+                                                rows="2"
+                                                variant="outlined"
+                                                density="compact"
+                                            />
+                                        </v-col>
+                                    </v-row>
+                                </v-col>
+                            </v-row>
+                        </v-form>
+                    </v-container>
+                </template>
+                <template #footer>
+                    <div class="d-flex justify-end ga-2">
+                        <v-btn
+                            variant="outlined"
+                            @click="showSaveModal = false"
+                            :disabled="saving"
+                            class="text-none"
+                        >
+                            Cancelar
+                        </v-btn>
+                        <v-btn
+                            color="primary"
+                            variant="flat"
+                            @click="handleSaveSubmit"
+                            :loading="saving"
+                            class="text-none"
+                        >
+                            {{ editingId ? 'Actualizar' : 'Guardar' }}
+                        </v-btn>
+                    </div>
+                </template>
+            </AppModal>
+
+            <!-- Delete Modal -->
+            <AppModal
+                v-model:open="showDeleteModal"
+                title="Eliminar Personal"
+                size="sm"
+            >
+                <template #body>
+                    <v-container fluid class="pa-4">
+                        <div class="text-center mb-4">
+                            <v-icon icon="mdi-alert-circle" size="64" color="error" />
+                        </div>
+                        <p class="text-body-1 text-center">
+                            ¿Está seguro que desea eliminar el personal
+                            <strong class="text-error">{{ deleteTarget?.nombre }} {{ deleteTarget?.apellido }}</strong>?
+                        </p>
+                        <p class="text-body-2 text-medium-emphasis text-center mt-2">
+                            Esta acción no se puede deshacer.
+                        </p>
+                    </v-container>
+                </template>
+                <template #footer>
+                    <div class="d-flex justify-end ga-2">
+                        <v-btn
+                            variant="outlined"
+                            @click="showDeleteModal = false"
+                            :disabled="deleting"
+                            class="text-none"
+                        >
+                            Cancelar
+                        </v-btn>
+                        <v-btn
+                            color="error"
+                            variant="flat"
+                            @click="handleDeleteConfirm"
+                            :loading="deleting"
+                            class="text-none"
+                        >
+                            Eliminar
+                        </v-btn>
+                    </div>
+                </template>
+            </AppModal>
+        </v-container>
     </AuthenticatedLayout>
 </template>
+

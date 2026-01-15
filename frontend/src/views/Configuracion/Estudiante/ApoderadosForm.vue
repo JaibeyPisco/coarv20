@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from 'vue';
+
 interface Apoderado {
     id?: number | null;
     apellidos: string;
@@ -53,99 +55,130 @@ function updateApoderado(index: number, field: keyof Apoderado, value: string | 
 </script>
 
 <template>
-    <div class="card border-primary border-top border-3">
-        <div class="card-body">
-            <span style="font-size: 18px" class="mb-3"><b>Datos del apoderado</b></span>
-            <div class="row mt-3">
-                <div class="col-md-12">
-                    <table class="table table-striped table-hover table-bordered">
-                        <thead>
-                            <tr>
-                                <th>APELLIDOS</th>
-                                <th>NOMBRES</th>
-                                <th>DNI</th>
-                                <th>NUMERO TELEFÓNICO</th>
-                                <th>GRADO DE PARENTESCO</th>
-                                <th>¿LEGALIZADO?</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(apoderado, index) in modelValue" :key="index">
-                                <td>
-                                    <input
-                                        :value="apoderado.apellidos"
-                                        type="text"
-                                        class="form-control form-control-sm"
-                                        @input="updateApoderado(index, 'apellidos', ($event.target as HTMLInputElement).value)"
-                                    />
-                                </td>
-                                <td>
-                                    <input
-                                        :value="apoderado.nombres"
-                                        type="text"
-                                        class="form-control form-control-sm"
-                                        @input="updateApoderado(index, 'nombres', ($event.target as HTMLInputElement).value)"
-                                    />
-                                </td>
-                                <td>
-                                    <input
-                                        :value="apoderado.dni"
-                                        type="number"
-                                        class="form-control form-control-sm"
-                                        @input="updateApoderado(index, 'dni', ($event.target as HTMLInputElement).value)"
-                                    />
-                                </td>
-                                <td>
-                                    <input
-                                        :value="apoderado.numero_telefonico"
-                                        type="number"
-                                        class="form-control form-control-sm"
-                                        @input="updateApoderado(index, 'numero_telefonico', ($event.target as HTMLInputElement).value)"
-                                    />
-                                </td>
-                                <td>
-                                    <input
-                                        :value="apoderado.grado_parentesco"
-                                        type="text"
-                                        class="form-control form-control-sm"
-                                        @input="updateApoderado(index, 'grado_parentesco', ($event.target as HTMLInputElement).value)"
-                                    />
-                                </td>
-                                <td>
-                                    <div class="form-check form-switch">
-                                        <input
-                                            :checked="apoderado.legalizado"
-                                            class="form-check-input"
-                                            type="checkbox"
-                                            @change="updateApoderado(index, 'legalizado', ($event.target as HTMLInputElement).checked)"
-                                        />
-                                    </div>
-                                </td>
-                                <td>
-                                    <button
-                                        type="button"
-                                        class="btn btn-danger btn-sm"
-                                        @click="removeApoderado(index)"
-                                    >
-                                        <i class="ti ti-x"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="6" align="center">
-                                    <button type="button" class="btn btn-primary btn-sm" @click="addApoderado">
-                                        <i class="ti ti-plus"></i> Agregar Apoderado
-                                    </button>
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
+    <v-container fluid class="pa-4">
+        <v-card rounded="lg" elevation="1" class="border-primary border-opacity-75" style="border-top-width: 3px !important;">
+            <v-card-title class="text-h6 font-weight-bold pa-4 pb-2">
+                Datos del Apoderado
+            </v-card-title>
+            <v-card-text class="pa-4">
+                <div v-if="modelValue.length === 0" class="text-center py-8">
+                    <v-icon icon="mdi-account-plus" size="64" color="grey-lighten-1" class="mb-4" />
+                    <p class="text-body-1 text-medium-emphasis mb-4">
+                        No hay apoderados registrados. Haz clic en el botón para agregar uno.
+                    </p>
+                    <v-btn
+                        color="primary"
+                        variant="flat"
+                        prepend-icon="mdi-plus"
+                        @click="addApoderado"
+                        class="text-none"
+                    >
+                        Agregar Apoderado
+                    </v-btn>
                 </div>
-            </div>
-        </div>
-    </div>
+
+                <div v-else>
+                    <v-card
+                        v-for="(apoderado, index) in modelValue"
+                        :key="index"
+                        class="mb-4"
+                        variant="outlined"
+                        rounded="lg"
+                    >
+                        <v-card-text class="pa-4">
+                            <div class="d-flex justify-space-between align-center mb-3">
+                                <h6 class="text-subtitle-1 font-weight-bold">
+                                    Apoderado {{ index + 1 }}
+                                </h6>
+                                <v-btn
+                                    icon="mdi-delete"
+                                    size="small"
+                                    color="error"
+                                    variant="text"
+                                    @click="removeApoderado(index)"
+                                />
+                            </div>
+
+                            <v-row>
+                                <v-col cols="12" md="6">
+                                    <v-text-field
+                                        :model-value="apoderado.apellidos"
+                                        label="Apellidos"
+                                        variant="outlined"
+                                        density="compact"
+                                        @update:model-value="updateApoderado(index, 'apellidos', $event)"
+                                    />
+                                </v-col>
+                                <v-col cols="12" md="6">
+                                    <v-text-field
+                                        :model-value="apoderado.nombres"
+                                        label="Nombres"
+                                        variant="outlined"
+                                        density="compact"
+                                        @update:model-value="updateApoderado(index, 'nombres', $event)"
+                                    />
+                                </v-col>
+                                <v-col cols="12" md="4">
+                                    <v-text-field
+                                        :model-value="apoderado.dni"
+                                        label="DNI"
+                                        variant="outlined"
+                                        density="compact"
+                                        type="number"
+                                        @update:model-value="updateApoderado(index, 'dni', $event)"
+                                    />
+                                </v-col>
+                                <v-col cols="12" md="4">
+                                    <v-text-field
+                                        :model-value="apoderado.numero_telefonico"
+                                        label="Número Telefónico"
+                                        variant="outlined"
+                                        density="compact"
+                                        type="tel"
+                                        @update:model-value="updateApoderado(index, 'numero_telefonico', $event)"
+                                    />
+                                </v-col>
+                                <v-col cols="12" md="4">
+                                    <v-text-field
+                                        :model-value="apoderado.grado_parentesco"
+                                        label="Grado de Parentesco"
+                                        variant="outlined"
+                                        density="compact"
+                                        @update:model-value="updateApoderado(index, 'grado_parentesco', $event)"
+                                    />
+                                </v-col>
+                                <v-col cols="12">
+                                    <v-switch
+                                        :model-value="apoderado.legalizado"
+                                        label="¿Legalizado?"
+                                        color="primary"
+                                        hide-details
+                                        @update:model-value="updateApoderado(index, 'legalizado', $event)"
+                                    />
+                                </v-col>
+                            </v-row>
+                        </v-card-text>
+                    </v-card>
+
+                    <div class="text-center mt-4">
+                        <v-btn
+                            color="primary"
+                            variant="flat"
+                            prepend-icon="mdi-plus"
+                            @click="addApoderado"
+                            class="text-none"
+                        >
+                            Agregar Apoderado
+                        </v-btn>
+                    </div>
+                </div>
+            </v-card-text>
+        </v-card>
+    </v-container>
 </template>
 
+<style scoped>
+.border-primary {
+    border-color: rgb(var(--v-theme-primary)) !important;
+}
+</style>
