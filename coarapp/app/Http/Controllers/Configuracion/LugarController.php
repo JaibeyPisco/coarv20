@@ -56,7 +56,8 @@ final class LugarController extends BaseController
         $payload = $request->validated();
 
         $lugar = DB::transaction(function () use ($payload): LugarModel {
-            /** @var LugarModel $lugar */
+            
+        /** @var LugarModel $lugar */
             $lugar = LugarModel::query()->create([
                 'nombre' => $payload['nombre'],
                 'referencia' => $payload['referencia'] ?? null,

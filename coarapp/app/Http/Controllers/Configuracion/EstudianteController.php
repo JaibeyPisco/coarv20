@@ -66,462 +66,462 @@ final class EstudianteController extends BaseController
     /**
      * Importa estudiantes desde un archivo Excel
      */
-    public function importar(Request $request): JsonResponse
-    {
-        $this->validarPermisos("configuracion-estudiante", "new");
+    // public function importar(Request $request): JsonResponse
+    // {
+    //     $this->validarPermisos("configuracion-estudiante", "new");
 
-        try {
-            $file = $request->file("fileexportar");
+    //     try {
+    //         $file = $request->file("fileexportar");
 
-            if (!$file) {
-                return response()->json(
-                    [
-                        "message" => "No se ha seleccionado ningún archivo.",
-                    ],
-                    400,
-                );
-            }
+    //         if (!$file) {
+    //             return response()->json(
+    //                 [
+    //                     "message" => "No se ha seleccionado ningún archivo.",
+    //                 ],
+    //                 400,
+    //             );
+    //         }
 
-            $extension = $file->getClientOriginalExtension();
-            if ($extension !== "xlsx" && $extension !== "xls") {
-                return response()->json(
-                    [
-                        "message" => "El archivo debe ser Excel (.xlsx o .xls)",
-                    ],
-                    400,
-                );
-            }
+    //         $extension = $file->getClientOriginalExtension();
+    //         if ($extension !== "xlsx" && $extension !== "xls") {
+    //             return response()->json(
+    //                 [
+    //                     "message" => "El archivo debe ser Excel (.xlsx o .xls)",
+    //                 ],
+    //                 400,
+    //             );
+    //         }
 
-            $spreadsheet = IOFactory::load($file->getRealPath());
-            $worksheet = $spreadsheet->getActiveSheet();
-            $highestRow = $worksheet->getHighestRow();
+    //         $spreadsheet = IOFactory::load($file->getRealPath());
+    //         $worksheet = $spreadsheet->getActiveSheet();
+    //         $highestRow = $worksheet->getHighestRow();
 
-            $contador = 0;
+    //         $contador = 0;
 
-            DB::beginTransaction();
+    //         DB::beginTransaction();
 
-            for ($i = 4; $i <= $highestRow; $i++) {
-                $dni = trim((string) $worksheet->getCell("H" . $i)->getValue());
+    //         for ($i = 4; $i <= $highestRow; $i++) {
+    //             $dni = trim((string) $worksheet->getCell("H" . $i)->getValue());
 
-                if (empty($dni)) {
-                    continue;
-                }
+    //             if (empty($dni)) {
+    //                 continue;
+    //             }
 
-                // Procesar fechas
-                $fechaNacimiento = null;
-                if ($worksheet->getCell("L" . $i)->getValue()) {
-                    try {
-                        $excelDate = $worksheet->getCell("L" . $i)->getValue();
-                        if (is_numeric($excelDate)) {
-                            $fechaNacimiento = Date::excelToDateTimeObject(
-                                $excelDate,
-                            )->format("Y-m-d");
-                        }
-                    } catch (\Exception $e) {
-                        // Ignorar errores de fecha
-                    }
-                }
+    //             // Procesar fechas
+    //             $fechaNacimiento = null;
+    //             if ($worksheet->getCell("L" . $i)->getValue()) {
+    //                 try {
+    //                     $excelDate = $worksheet->getCell("L" . $i)->getValue();
+    //                     if (is_numeric($excelDate)) {
+    //                         $fechaNacimiento = Date::excelToDateTimeObject(
+    //                             $excelDate,
+    //                         )->format("Y-m-d");
+    //                     }
+    //                 } catch (\Exception $e) {
+    //                     // Ignorar errores de fecha
+    //                 }
+    //             }
 
-                $fechaCaducidadDNI = null;
-                if ($worksheet->getCell("W" . $i)->getValue()) {
-                    try {
-                        $excelDate = $worksheet->getCell("W" . $i)->getValue();
-                        if (is_numeric($excelDate)) {
-                            $fechaCaducidadDNI = Date::excelToDateTimeObject(
-                                $excelDate,
-                            )->format("Y-m-d");
-                        }
-                    } catch (\Exception $e) {
-                        // Ignorar errores de fecha
-                    }
-                }
+    //             $fechaCaducidadDNI = null;
+    //             if ($worksheet->getCell("W" . $i)->getValue()) {
+    //                 try {
+    //                     $excelDate = $worksheet->getCell("W" . $i)->getValue();
+    //                     if (is_numeric($excelDate)) {
+    //                         $fechaCaducidadDNI = Date::excelToDateTimeObject(
+    //                             $excelDate,
+    //                         )->format("Y-m-d");
+    //                     }
+    //                 } catch (\Exception $e) {
+    //                     // Ignorar errores de fecha
+    //                 }
+    //             }
 
-                // Datos del estudiante
-                $dataEstudiante = [
-                    "condicion_estudiante" =>
-                        trim(
-                            (string) $worksheet->getCell("B" . $i)->getValue(),
-                        ) ?:
-                        "ESTUDIANTE",
-                    "apellidos" => trim(
-                        (string) $worksheet->getCell("C" . $i)->getValue(),
-                    ),
-                    "nombres" => trim(
-                        (string) $worksheet->getCell("D" . $i)->getValue(),
-                    ),
-                    "obsv" => trim(
-                        (string) $worksheet->getCell("E" . $i)->getValue(),
-                    ),
-                    "grado" => trim(
-                        (string) $worksheet->getCell("F" . $i)->getValue(),
-                    ),
-                    "seccion" => trim(
-                        (string) $worksheet->getCell("G" . $i)->getValue(),
-                    ),
-                    "dni" => $dni,
-                    "foto" =>
-                        trim(
-                            (string) $worksheet->getCell("I" . $i)->getValue(),
-                        ) ?:
-                        "sin_imagen.jpg",
-                    "sexo" => trim(
-                        (string) $worksheet->getCell("J" . $i)->getValue(),
-                    ),
-                    "correo_electronico" => trim(
-                        (string) $worksheet->getCell("K" . $i)->getValue(),
-                    ),
-                    "fecha_nacimiento" => $fechaNacimiento,
-                    "lav" => trim(
-                        (string) $worksheet->getCell("M" . $i)->getValue(),
-                    ),
-                    "llaves" => trim(
-                        (string) $worksheet->getCell("N" . $i)->getValue(),
-                    ),
-                    "pabellon" => trim(
-                        (string) $worksheet->getCell("O" . $i)->getValue(),
-                    ),
-                    "ala" => trim(
-                        (string) $worksheet->getCell("P" . $i)->getValue(),
-                    ),
-                    "cama_ropero" => trim(
-                        (string) $worksheet->getCell("Q" . $i)->getValue(),
-                    ),
-                    "duchas" => trim(
-                        (string) $worksheet->getCell("R" . $i)->getValue(),
-                    ),
-                    "banos" => trim(
-                        (string) $worksheet->getCell("S" . $i)->getValue(),
-                    ),
-                    "urinarios" => trim(
-                        (string) $worksheet->getCell("T" . $i)->getValue(),
-                    ),
-                    "monitor_acompana" => trim(
-                        (string) $worksheet->getCell("U" . $i)->getValue(),
-                    ),
-                    "lugar_nacimiento" => trim(
-                        (string) $worksheet->getCell("V" . $i)->getValue(),
-                    ),
-                    "fecha_caducidad_dni" => $fechaCaducidadDNI,
-                    "num_telefonico" => trim(
-                        (string) $worksheet->getCell("X" . $i)->getValue(),
-                    ),
-                    "religion" => trim(
-                        (string) $worksheet->getCell("Y" . $i)->getValue(),
-                    ),
-                    "region_domicilio_actual" => trim(
-                        (string) $worksheet->getCell("Z" . $i)->getValue(),
-                    ),
-                    "provincia_domicilio_actual" => trim(
-                        (string) $worksheet->getCell("AA" . $i)->getValue(),
-                    ),
-                    "distrito_domicilio_actual" => trim(
-                        (string) $worksheet->getCell("AB" . $i)->getValue(),
-                    ),
-                    "direccion_domicilio_actual" => trim(
-                        (string) $worksheet->getCell("AC" . $i)->getValue(),
-                    ),
-                    "referencia_domicilio_actual" => trim(
-                        (string) $worksheet->getCell("AD" . $i)->getValue(),
-                    ),
-                ];
+    //             // Datos del estudiante
+    //             $dataEstudiante = [
+    //                 "condicion_estudiante" =>
+    //                     trim(
+    //                         (string) $worksheet->getCell("B" . $i)->getValue(),
+    //                     ) ?:
+    //                     "ESTUDIANTE",
+    //                 "apellidos" => trim(
+    //                     (string) $worksheet->getCell("C" . $i)->getValue(),
+    //                 ),
+    //                 "nombres" => trim(
+    //                     (string) $worksheet->getCell("D" . $i)->getValue(),
+    //                 ),
+    //                 "obsv" => trim(
+    //                     (string) $worksheet->getCell("E" . $i)->getValue(),
+    //                 ),
+    //                 "grado" => trim(
+    //                     (string) $worksheet->getCell("F" . $i)->getValue(),
+    //                 ),
+    //                 "seccion" => trim(
+    //                     (string) $worksheet->getCell("G" . $i)->getValue(),
+    //                 ),
+    //                 "dni" => $dni,
+    //                 "foto" =>
+    //                     trim(
+    //                         (string) $worksheet->getCell("I" . $i)->getValue(),
+    //                     ) ?:
+    //                     "sin_imagen.jpg",
+    //                 "sexo" => trim(
+    //                     (string) $worksheet->getCell("J" . $i)->getValue(),
+    //                 ),
+    //                 "correo_electronico" => trim(
+    //                     (string) $worksheet->getCell("K" . $i)->getValue(),
+    //                 ),
+    //                 "fecha_nacimiento" => $fechaNacimiento,
+    //                 "lav" => trim(
+    //                     (string) $worksheet->getCell("M" . $i)->getValue(),
+    //                 ),
+    //                 "llaves" => trim(
+    //                     (string) $worksheet->getCell("N" . $i)->getValue(),
+    //                 ),
+    //                 "pabellon" => trim(
+    //                     (string) $worksheet->getCell("O" . $i)->getValue(),
+    //                 ),
+    //                 "ala" => trim(
+    //                     (string) $worksheet->getCell("P" . $i)->getValue(),
+    //                 ),
+    //                 "cama_ropero" => trim(
+    //                     (string) $worksheet->getCell("Q" . $i)->getValue(),
+    //                 ),
+    //                 "duchas" => trim(
+    //                     (string) $worksheet->getCell("R" . $i)->getValue(),
+    //                 ),
+    //                 "banos" => trim(
+    //                     (string) $worksheet->getCell("S" . $i)->getValue(),
+    //                 ),
+    //                 "urinarios" => trim(
+    //                     (string) $worksheet->getCell("T" . $i)->getValue(),
+    //                 ),
+    //                 "monitor_acompana" => trim(
+    //                     (string) $worksheet->getCell("U" . $i)->getValue(),
+    //                 ),
+    //                 "lugar_nacimiento" => trim(
+    //                     (string) $worksheet->getCell("V" . $i)->getValue(),
+    //                 ),
+    //                 "fecha_caducidad_dni" => $fechaCaducidadDNI,
+    //                 "num_telefonico" => trim(
+    //                     (string) $worksheet->getCell("X" . $i)->getValue(),
+    //                 ),
+    //                 "religion" => trim(
+    //                     (string) $worksheet->getCell("Y" . $i)->getValue(),
+    //                 ),
+    //                 "region_domicilio_actual" => trim(
+    //                     (string) $worksheet->getCell("Z" . $i)->getValue(),
+    //                 ),
+    //                 "provincia_domicilio_actual" => trim(
+    //                     (string) $worksheet->getCell("AA" . $i)->getValue(),
+    //                 ),
+    //                 "distrito_domicilio_actual" => trim(
+    //                     (string) $worksheet->getCell("AB" . $i)->getValue(),
+    //                 ),
+    //                 "direccion_domicilio_actual" => trim(
+    //                     (string) $worksheet->getCell("AC" . $i)->getValue(),
+    //                 ),
+    //                 "referencia_domicilio_actual" => trim(
+    //                     (string) $worksheet->getCell("AD" . $i)->getValue(),
+    //                 ),
+    //             ];
 
-                // Verificar si el estudiante ya existe
-                $estudianteExistente = EstudianteModel::query()
-                    ->where("dni", $dni)
-                    ->first();
-                if ($estudianteExistente) {
-                    $dataEstudiante["id"] = $estudianteExistente->id;
-                    $estudiante = $estudianteExistente;
-                    $estudiante->update($dataEstudiante);
-                    $idEstudiante = $estudiante->id;
-                } else {
-                    $estudiante = EstudianteModel::query()->create(
-                        $dataEstudiante,
-                    );
-                    $idEstudiante = $estudiante->id;
-                }
+    //             // Verificar si el estudiante ya existe
+    //             $estudianteExistente = EstudianteModel::query()
+    //                 ->where("dni", $dni)
+    //                 ->first();
+    //             if ($estudianteExistente) {
+    //                 $dataEstudiante["id"] = $estudianteExistente->id;
+    //                 $estudiante = $estudianteExistente;
+    //                 $estudiante->update($dataEstudiante);
+    //                 $idEstudiante = $estudiante->id;
+    //             } else {
+    //                 $estudiante = EstudianteModel::query()->create(
+    //                     $dataEstudiante,
+    //                 );
+    //                 $idEstudiante = $estudiante->id;
+    //             }
 
-                // Datos de la madre
-                $dataMadre = [
-                    "tipo" => "MADRE",
-                    "vive" =>
-                        strtoupper(
-                            trim(
-                                (string) $worksheet
-                                    ->getCell("AE" . $i)
-                                    ->getValue(),
-                            ),
-                        ) === "SI"
-                            ? 1
-                            : 0,
-                    "vive_con_estudiante" =>
-                        strtoupper(
-                            trim(
-                                (string) $worksheet
-                                    ->getCell("AF" . $i)
-                                    ->getValue(),
-                            ),
-                        ) === "SI"
-                            ? 1
-                            : 0,
-                    "apellidos" => trim(
-                        (string) $worksheet->getCell("AG" . $i)->getValue(),
-                    ),
-                    "nombres" => trim(
-                        (string) $worksheet->getCell("AH" . $i)->getValue(),
-                    ),
-                    "dni" => trim(
-                        (string) $worksheet->getCell("AI" . $i)->getValue(),
-                    ),
-                    "grado_instruccion" => trim(
-                        (string) $worksheet->getCell("AJ" . $i)->getValue(),
-                    ),
-                    "ocupacion_actual" => trim(
-                        (string) $worksheet->getCell("AK" . $i)->getValue(),
-                    ),
-                    "telefono" => trim(
-                        (string) $worksheet->getCell("AL" . $i)->getValue(),
-                    ),
-                    "correo_electronico" => trim(
-                        (string) $worksheet->getCell("AM" . $i)->getValue(),
-                    ),
-                    "motivo_no_vive_con_estudiante" => trim(
-                        (string) $worksheet->getCell("AN" . $i)->getValue(),
-                    ),
-                    "id_estudiante" => $idEstudiante,
-                ];
+    //             // Datos de la madre
+    //             $dataMadre = [
+    //                 "tipo" => "MADRE",
+    //                 "vive" =>
+    //                     strtoupper(
+    //                         trim(
+    //                             (string) $worksheet
+    //                                 ->getCell("AE" . $i)
+    //                                 ->getValue(),
+    //                         ),
+    //                     ) === "SI"
+    //                         ? 1
+    //                         : 0,
+    //                 "vive_con_estudiante" =>
+    //                     strtoupper(
+    //                         trim(
+    //                             (string) $worksheet
+    //                                 ->getCell("AF" . $i)
+    //                                 ->getValue(),
+    //                         ),
+    //                     ) === "SI"
+    //                         ? 1
+    //                         : 0,
+    //                 "apellidos" => trim(
+    //                     (string) $worksheet->getCell("AG" . $i)->getValue(),
+    //                 ),
+    //                 "nombres" => trim(
+    //                     (string) $worksheet->getCell("AH" . $i)->getValue(),
+    //                 ),
+    //                 "dni" => trim(
+    //                     (string) $worksheet->getCell("AI" . $i)->getValue(),
+    //                 ),
+    //                 "grado_instruccion" => trim(
+    //                     (string) $worksheet->getCell("AJ" . $i)->getValue(),
+    //                 ),
+    //                 "ocupacion_actual" => trim(
+    //                     (string) $worksheet->getCell("AK" . $i)->getValue(),
+    //                 ),
+    //                 "telefono" => trim(
+    //                     (string) $worksheet->getCell("AL" . $i)->getValue(),
+    //                 ),
+    //                 "correo_electronico" => trim(
+    //                     (string) $worksheet->getCell("AM" . $i)->getValue(),
+    //                 ),
+    //                 "motivo_no_vive_con_estudiante" => trim(
+    //                     (string) $worksheet->getCell("AN" . $i)->getValue(),
+    //                 ),
+    //                 "id_estudiante" => $idEstudiante,
+    //             ];
 
-                $madreExistente = PadresApoderadosModel::query()
-                    ->where("tipo", "MADRE")
-                    ->where("dni", $dataMadre["dni"])
-                    ->where("id_estudiante", $idEstudiante)
-                    ->first();
+    //             $madreExistente = PadresApoderadosModel::query()
+    //                 ->where("tipo", "MADRE")
+    //                 ->where("dni", $dataMadre["dni"])
+    //                 ->where("id_estudiante", $idEstudiante)
+    //                 ->first();
 
-                if ($madreExistente) {
-                    $madreExistente->update($dataMadre);
-                } elseif (!empty($dataMadre["dni"])) {
-                    PadresApoderadosModel::query()->create($dataMadre);
-                }
+    //             if ($madreExistente) {
+    //                 $madreExistente->update($dataMadre);
+    //             } elseif (!empty($dataMadre["dni"])) {
+    //                 PadresApoderadosModel::query()->create($dataMadre);
+    //             }
 
-                // Datos del padre
-                $dataPadre = [
-                    "tipo" => "PADRE",
-                    "vive" =>
-                        strtoupper(
-                            trim(
-                                (string) $worksheet
-                                    ->getCell("AO" . $i)
-                                    ->getValue(),
-                            ),
-                        ) === "SI"
-                            ? 1
-                            : 0,
-                    "vive_con_estudiante" =>
-                        strtoupper(
-                            trim(
-                                (string) $worksheet
-                                    ->getCell("AP" . $i)
-                                    ->getValue(),
-                            ),
-                        ) === "SI"
-                            ? 1
-                            : 0,
-                    "apellidos" => trim(
-                        (string) $worksheet->getCell("AQ" . $i)->getValue(),
-                    ),
-                    "nombres" => trim(
-                        (string) $worksheet->getCell("AR" . $i)->getValue(),
-                    ),
-                    "dni" => trim(
-                        (string) $worksheet->getCell("AS" . $i)->getValue(),
-                    ),
-                    "grado_instruccion" => trim(
-                        (string) $worksheet->getCell("AT" . $i)->getValue(),
-                    ),
-                    "ocupacion_actual" => trim(
-                        (string) $worksheet->getCell("AU" . $i)->getValue(),
-                    ),
-                    "correo_electronico" => trim(
-                        (string) $worksheet->getCell("AV" . $i)->getValue(),
-                    ),
-                    "telefono" => trim(
-                        (string) $worksheet->getCell("AW" . $i)->getValue(),
-                    ),
-                    "motivo_no_vive_con_estudiante" => trim(
-                        (string) $worksheet->getCell("AX" . $i)->getValue(),
-                    ),
-                    "id_estudiante" => $idEstudiante,
-                ];
+    //             // Datos del padre
+    //             $dataPadre = [
+    //                 "tipo" => "PADRE",
+    //                 "vive" =>
+    //                     strtoupper(
+    //                         trim(
+    //                             (string) $worksheet
+    //                                 ->getCell("AO" . $i)
+    //                                 ->getValue(),
+    //                         ),
+    //                     ) === "SI"
+    //                         ? 1
+    //                         : 0,
+    //                 "vive_con_estudiante" =>
+    //                     strtoupper(
+    //                         trim(
+    //                             (string) $worksheet
+    //                                 ->getCell("AP" . $i)
+    //                                 ->getValue(),
+    //                         ),
+    //                     ) === "SI"
+    //                         ? 1
+    //                         : 0,
+    //                 "apellidos" => trim(
+    //                     (string) $worksheet->getCell("AQ" . $i)->getValue(),
+    //                 ),
+    //                 "nombres" => trim(
+    //                     (string) $worksheet->getCell("AR" . $i)->getValue(),
+    //                 ),
+    //                 "dni" => trim(
+    //                     (string) $worksheet->getCell("AS" . $i)->getValue(),
+    //                 ),
+    //                 "grado_instruccion" => trim(
+    //                     (string) $worksheet->getCell("AT" . $i)->getValue(),
+    //                 ),
+    //                 "ocupacion_actual" => trim(
+    //                     (string) $worksheet->getCell("AU" . $i)->getValue(),
+    //                 ),
+    //                 "correo_electronico" => trim(
+    //                     (string) $worksheet->getCell("AV" . $i)->getValue(),
+    //                 ),
+    //                 "telefono" => trim(
+    //                     (string) $worksheet->getCell("AW" . $i)->getValue(),
+    //                 ),
+    //                 "motivo_no_vive_con_estudiante" => trim(
+    //                     (string) $worksheet->getCell("AX" . $i)->getValue(),
+    //                 ),
+    //                 "id_estudiante" => $idEstudiante,
+    //             ];
 
-                $padreExistente = PadresApoderadosModel::query()
-                    ->where("tipo", "PADRE")
-                    ->where("dni", $dataPadre["dni"])
-                    ->where("id_estudiante", $idEstudiante)
-                    ->first();
+    //             $padreExistente = PadresApoderadosModel::query()
+    //                 ->where("tipo", "PADRE")
+    //                 ->where("dni", $dataPadre["dni"])
+    //                 ->where("id_estudiante", $idEstudiante)
+    //                 ->first();
 
-                if ($padreExistente) {
-                    $padreExistente->update($dataPadre);
-                } elseif (!empty($dataPadre["dni"])) {
-                    PadresApoderadosModel::query()->create($dataPadre);
-                }
+    //             if ($padreExistente) {
+    //                 $padreExistente->update($dataPadre);
+    //             } elseif (!empty($dataPadre["dni"])) {
+    //                 PadresApoderadosModel::query()->create($dataPadre);
+    //             }
 
-                // Datos del apoderado rol padre/madre
-                $dataApoderadoRolPadreMadre = [
-                    "tipo" => "PADRE_APODERADO",
-                    "parentesco_estudiante" => trim(
-                        (string) $worksheet->getCell("AY" . $i)->getValue(),
-                    ),
-                    "apellidos" => trim(
-                        (string) $worksheet->getCell("AZ" . $i)->getValue(),
-                    ),
-                    "nombres" => trim(
-                        (string) $worksheet->getCell("BA" . $i)->getValue(),
-                    ),
-                    "dni" => trim(
-                        (string) $worksheet->getCell("BB" . $i)->getValue(),
-                    ),
-                    "telefono" => trim(
-                        (string) $worksheet->getCell("BC" . $i)->getValue(),
-                    ),
-                    "tipo_familia" => trim(
-                        (string) $worksheet->getCell("BD" . $i)->getValue(),
-                    ),
-                    "id_estudiante" => $idEstudiante,
-                ];
+    //             // Datos del apoderado rol padre/madre
+    //             $dataApoderadoRolPadreMadre = [
+    //                 "tipo" => "PADRE_APODERADO",
+    //                 "parentesco_estudiante" => trim(
+    //                     (string) $worksheet->getCell("AY" . $i)->getValue(),
+    //                 ),
+    //                 "apellidos" => trim(
+    //                     (string) $worksheet->getCell("AZ" . $i)->getValue(),
+    //                 ),
+    //                 "nombres" => trim(
+    //                     (string) $worksheet->getCell("BA" . $i)->getValue(),
+    //                 ),
+    //                 "dni" => trim(
+    //                     (string) $worksheet->getCell("BB" . $i)->getValue(),
+    //                 ),
+    //                 "telefono" => trim(
+    //                     (string) $worksheet->getCell("BC" . $i)->getValue(),
+    //                 ),
+    //                 "tipo_familia" => trim(
+    //                     (string) $worksheet->getCell("BD" . $i)->getValue(),
+    //                 ),
+    //                 "id_estudiante" => $idEstudiante,
+    //             ];
 
-                $apoderadoRolExistente = PadresApoderadosModel::query()
-                    ->where("tipo", "PADRE_APODERADO")
-                    ->where("dni", $dataApoderadoRolPadreMadre["dni"])
-                    ->where("id_estudiante", $idEstudiante)
-                    ->first();
+    //             $apoderadoRolExistente = PadresApoderadosModel::query()
+    //                 ->where("tipo", "PADRE_APODERADO")
+    //                 ->where("dni", $dataApoderadoRolPadreMadre["dni"])
+    //                 ->where("id_estudiante", $idEstudiante)
+    //                 ->first();
 
-                if ($apoderadoRolExistente) {
-                    $apoderadoRolExistente->update($dataApoderadoRolPadreMadre);
-                } elseif (!empty($dataApoderadoRolPadreMadre["dni"])) {
-                    PadresApoderadosModel::query()->create(
-                        $dataApoderadoRolPadreMadre,
-                    );
-                }
+    //             if ($apoderadoRolExistente) {
+    //                 $apoderadoRolExistente->update($dataApoderadoRolPadreMadre);
+    //             } elseif (!empty($dataApoderadoRolPadreMadre["dni"])) {
+    //                 PadresApoderadosModel::query()->create(
+    //                     $dataApoderadoRolPadreMadre,
+    //                 );
+    //             }
 
-                // Procesar apoderados (múltiples)
-                $apoderadosCols = [
-                    ["BE", "BF", "BG", "BH", "BI", "BJ"], // Apoderado 1
-                    ["BK", "BL", "BM", "BN", "BO", "BP"], // Apoderado 2
-                    ["BQ", "BR", "BS", "BT", "BU", "BV"], // Apoderado 3
-                    ["BW", "BX", "BY", "BZ", "CA", "CB"], // Apoderado 4
-                    ["CC", "CD", "CE", "CF", "CG", "CH"], // Apoderado 5
-                    ["CI", "CJ", "CK", "CL", "CM", "CN"], // Apoderado 6
-                    ["CO", "CP", "CQ", "CR", "CS", "CT"], // Apoderado 7
-                ];
+    //             // Procesar apoderados (múltiples)
+    //             $apoderadosCols = [
+    //                 ["BE", "BF", "BG", "BH", "BI", "BJ"], // Apoderado 1
+    //                 ["BK", "BL", "BM", "BN", "BO", "BP"], // Apoderado 2
+    //                 ["BQ", "BR", "BS", "BT", "BU", "BV"], // Apoderado 3
+    //                 ["BW", "BX", "BY", "BZ", "CA", "CB"], // Apoderado 4
+    //                 ["CC", "CD", "CE", "CF", "CG", "CH"], // Apoderado 5
+    //                 ["CI", "CJ", "CK", "CL", "CM", "CN"], // Apoderado 6
+    //                 ["CO", "CP", "CQ", "CR", "CS", "CT"], // Apoderado 7
+    //             ];
 
-                $dataApoderados = [];
-                foreach ($apoderadosCols as $cols) {
-                    $dniApoderado = trim(
-                        (string) $worksheet->getCell($cols[2] . $i)->getValue(),
-                    );
-                    if (!empty($dniApoderado)) {
-                        $dataApoderados[] = [
-                            "tipo" => "APODERADO",
-                            "apellidos" => trim(
-                                (string) $worksheet
-                                    ->getCell($cols[0] . $i)
-                                    ->getValue(),
-                            ),
-                            "nombres" => trim(
-                                (string) $worksheet
-                                    ->getCell($cols[1] . $i)
-                                    ->getValue(),
-                            ),
-                            "dni" => $dniApoderado,
-                            "telefono" => trim(
-                                (string) $worksheet
-                                    ->getCell($cols[3] . $i)
-                                    ->getValue(),
-                            ),
-                            "parentesco_estudiante" => trim(
-                                (string) $worksheet
-                                    ->getCell($cols[4] . $i)
-                                    ->getValue(),
-                            ),
-                            "fl_legalizado" =>
-                                strtoupper(
-                                    trim(
-                                        (string) $worksheet
-                                            ->getCell($cols[5] . $i)
-                                            ->getValue(),
-                                    ),
-                                ) === "SI"
-                                    ? 1
-                                    : 0,
-                            "id_estudiante" => $idEstudiante,
-                        ];
-                    }
-                }
+    //             $dataApoderados = [];
+    //             foreach ($apoderadosCols as $cols) {
+    //                 $dniApoderado = trim(
+    //                     (string) $worksheet->getCell($cols[2] . $i)->getValue(),
+    //                 );
+    //                 if (!empty($dniApoderado)) {
+    //                     $dataApoderados[] = [
+    //                         "tipo" => "APODERADO",
+    //                         "apellidos" => trim(
+    //                             (string) $worksheet
+    //                                 ->getCell($cols[0] . $i)
+    //                                 ->getValue(),
+    //                         ),
+    //                         "nombres" => trim(
+    //                             (string) $worksheet
+    //                                 ->getCell($cols[1] . $i)
+    //                                 ->getValue(),
+    //                         ),
+    //                         "dni" => $dniApoderado,
+    //                         "telefono" => trim(
+    //                             (string) $worksheet
+    //                                 ->getCell($cols[3] . $i)
+    //                                 ->getValue(),
+    //                         ),
+    //                         "parentesco_estudiante" => trim(
+    //                             (string) $worksheet
+    //                                 ->getCell($cols[4] . $i)
+    //                                 ->getValue(),
+    //                         ),
+    //                         "fl_legalizado" =>
+    //                             strtoupper(
+    //                                 trim(
+    //                                     (string) $worksheet
+    //                                         ->getCell($cols[5] . $i)
+    //                                         ->getValue(),
+    //                                 ),
+    //                             ) === "SI"
+    //                                 ? 1
+    //                                 : 0,
+    //                         "id_estudiante" => $idEstudiante,
+    //                     ];
+    //                 }
+    //             }
 
-                // Guardar apoderados
-                if (!empty($dataApoderados)) {
-                    $existingApoderados = PadresApoderadosModel::query()
-                        ->where("id_estudiante", $idEstudiante)
-                        ->where("tipo", "APODERADO")
-                        ->get();
+    //             // Guardar apoderados
+    //             if (!empty($dataApoderados)) {
+    //                 $existingApoderados = PadresApoderadosModel::query()
+    //                     ->where("id_estudiante", $idEstudiante)
+    //                     ->where("tipo", "APODERADO")
+    //                     ->get();
 
-                    $existingIds = $existingApoderados->pluck("id")->toArray();
-                    $receivedIds = [];
+    //                 $existingIds = $existingApoderados->pluck("id")->toArray();
+    //                 $receivedIds = [];
 
-                    foreach ($dataApoderados as $apoderadoData) {
-                        $apoderadoExistente = PadresApoderadosModel::query()
-                            ->where("tipo", "APODERADO")
-                            ->where("dni", $apoderadoData["dni"])
-                            ->where("id_estudiante", $idEstudiante)
-                            ->first();
+    //                 foreach ($dataApoderados as $apoderadoData) {
+    //                     $apoderadoExistente = PadresApoderadosModel::query()
+    //                         ->where("tipo", "APODERADO")
+    //                         ->where("dni", $apoderadoData["dni"])
+    //                         ->where("id_estudiante", $idEstudiante)
+    //                         ->first();
 
-                        if ($apoderadoExistente) {
-                            $apoderadoExistente->update($apoderadoData);
-                            $receivedIds[] = $apoderadoExistente->id;
-                        } else {
-                            $nuevoApoderado = PadresApoderadosModel::query()->create(
-                                $apoderadoData,
-                            );
-                            $receivedIds[] = $nuevoApoderado->id;
-                        }
-                    }
+    //                     if ($apoderadoExistente) {
+    //                         $apoderadoExistente->update($apoderadoData);
+    //                         $receivedIds[] = $apoderadoExistente->id;
+    //                     } else {
+    //                         $nuevoApoderado = PadresApoderadosModel::query()->create(
+    //                             $apoderadoData,
+    //                         );
+    //                         $receivedIds[] = $nuevoApoderado->id;
+    //                     }
+    //                 }
 
-                    // Eliminar apoderados que ya no están en el Excel
-                    $idsToDelete = array_diff($existingIds, $receivedIds);
-                    if (!empty($idsToDelete)) {
-                        PadresApoderadosModel::query()
-                            ->whereIn("id", $idsToDelete)
-                            ->delete();
-                    }
-                }
+    //                 // Eliminar apoderados que ya no están en el Excel
+    //                 $idsToDelete = array_diff($existingIds, $receivedIds);
+    //                 if (!empty($idsToDelete)) {
+    //                     PadresApoderadosModel::query()
+    //                         ->whereIn("id", $idsToDelete)
+    //                         ->delete();
+    //                 }
+    //             }
 
-                $contador++;
-            }
+    //             $contador++;
+    //         }
 
-            DB::commit();
+    //         DB::commit();
 
-            $this->centinelaService->registrarCambio(
-                accion: "IMPORTAR",
-                descripcion: "Se importaron {$contador} estudiantes",
-                menu: self::MENU,
-                modulo: self::MODULO,
-            );
+    //         $this->centinelaService->registrarCambio(
+    //             accion: "IMPORTAR",
+    //             descripcion: "Se importaron {$contador} estudiantes",
+    //             menu: self::MENU,
+    //             modulo: self::MODULO,
+    //         );
 
-            return response()->json(
-                [
-                    "message" => "Se han importado correctamente {$contador} registros.",
-                ],
-                200,
-            );
-        } catch (Throwable $e) {
-            DB::rollBack();
-            return ErrorHandlerService::handleCrudError(
-                $e,
-                "importar",
-                "estudiante",
-            );
-        }
-    }
+    //         return response()->json(
+    //             [
+    //                 "message" => "Se han importado correctamente {$contador} registros.",
+    //             ],
+    //             200,
+    //         );
+    //     } catch (Throwable $e) {
+    //         DB::rollBack();
+    //         return ErrorHandlerService::handleCrudError(
+    //             $e,
+    //             "importar",
+    //             "estudiante",
+    //         );
+    //     }
+    // }
 
     public function index(): JsonResponse
     {

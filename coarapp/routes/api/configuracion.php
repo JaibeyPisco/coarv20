@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Http\Controllers\Configuracion\AreaController;
 use App\Http\Controllers\Configuracion\EmpresaController;
 use App\Http\Controllers\Configuracion\EstadoMonitoreoController;
+
+use App\Http\Controllers\Configuracion\Estudiante\ImportacionController;
+
 use App\Http\Controllers\Configuracion\EstudianteController;
 use App\Http\Controllers\Configuracion\LugarController;
 use App\Http\Controllers\Configuracion\PersonalController;
@@ -14,6 +17,8 @@ use App\Http\Controllers\Configuracion\TipoPersonalController;
 use App\Http\Controllers\Configuracion\TiposIncidenciaController;
 use App\Http\Controllers\Configuracion\UsuarioController;
 use Illuminate\Support\Facades\Route;
+
+$prefix = 'configuracion';
 
 // Rutas API para Areas
 Route::prefix('configuracion/areas')->group(function (): void {
@@ -94,7 +99,15 @@ Route::prefix('configuracion/estudiante')->group(function (): void {
     Route::get('/', [EstudianteController::class, 'index']);
     Route::get('/editar/{estudiante}', [EstudianteController::class, 'show']);
     Route::post('/save', [EstudianteController::class, 'save']);
-    Route::post('/importar', [EstudianteController::class, 'importar']);
+
+    
+
+    Route::prefix('importacion')->group(function () {
+        Route::post('/validar',  [ImportacionController::class, 'validar']);
+    });
+ 
+    
+    // Route::post('/importar', [ImportacionController::class, 'importar']);
     Route::delete('/{estudiante}', [EstudianteController::class, 'destroy']);
 });
 

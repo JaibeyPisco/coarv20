@@ -1,0 +1,93 @@
+[
+    {
+        "ok": false,
+        "errores": [
+            {
+                "fila": 5,
+                "indice": 1,
+                "errores": {
+                    "numero": ["El n\u00famero es obligatorio."],
+                    "estado": ["El estado es obligatorio."],
+                    "apellidos": ["Los apellidos son obligatorios."],
+                    "nombre": ["El nombre es obligatorio."],
+                    "grado": ["El grado es obligatorio."],
+                    "seccion": ["La secci\u00f3n es obligatoria."],
+                    "dni": ["El DNI es obligatorio."],
+                    "sexo": ["The estudiantes.1.sexo field is required."],
+                    "email": ["El email del estudiante no es v\u00e1lido."],
+                    "fecha_nacimiento": [
+                        "The estudiantes.1.fecha_nacimiento field is required."
+                    ]
+                }
+            },
+            {
+                "fila": 4,
+                "indice": 0,
+                "errores": {
+                    "dni": ["El DNI debe tener 8 d\u00edgitos."],
+                    "telefono_madre": [
+                        "The estudiantes.0.telefono_madre field must be between 6 and 15 digits."
+                    ],
+                    "email_madre": ["El email de la madre no es v\u00e1lido."],
+                    "dni_padre": [
+                        "El DNI del padre debe tener entre 8 y 12 d\u00edgitos."
+                    ],
+                    "telefono_padre": [
+                        "The estudiantes.0.telefono_padre field must be between 6 and 15 digits."
+                    ],
+                    "email_padre": ["El email del padre no es v\u00e1lido."],
+                    "telefono_apoderado1": [
+                        "The estudiantes.0.telefono_apoderado1 field must be between 6 and 15 digits."
+                    ]
+                }
+            }
+        ],
+        "erroresGlobales": []
+    },
+    {
+        "ok": false,
+        "errores": [
+            {
+                "fila": 5,
+                "indice": 1,
+                "errores": {
+                    "numero": ["El campo estudiantes.1.numero es obligatorio."],
+                    "estado": ["El campo estudiantes.1.estado es obligatorio."],
+                    "apellidos": [
+                        "El campo estudiantes.1.apellidos es obligatorio."
+                    ],
+                    "nombre": ["El campo estudiantes.1.nombre es obligatorio."],
+                    "grado": ["El campo estudiantes.1.grado es obligatorio."],
+                    "seccion": [
+                        "El campo estudiantes.1.seccion es obligatorio."
+                    ],
+                    "dni": ["El campo estudiantes.1.dni es obligatorio."],
+                    "sexo": ["El campo estudiantes.1.sexo es obligatorio."],
+                    "email": ["El email del estudiante no es v\u00e1lido."],
+                    "fecha_nacimiento": [
+                        "El campo estudiantes.1.fecha_nacimiento es obligatorio."
+                    ]
+                }
+            },
+            {
+                "fila": 4,
+                "indice": 0,
+                "errores": {
+                    "dni": ["El DNI debe tener 8 d\u00edgitos."],
+                    "email_madre": ["El email de la madre no es v\u00e1lido."],
+                    "dni_padre": [
+                        "El campo estudiantes.0.dni_padre debe tener entre 8 y 12 d\u00edgitos."
+                    ],
+                    "telefono_padre": [
+                        "El tel\u00e9fono del padre debe tener entre 6 y 15 d\u00edgitos."
+                    ],
+                    "email_padre": ["El email del padre no es v\u00e1lido."],
+                    "telefono_apoderado1": [
+                        "El campo estudiantes.0.telefono_apoderado1 debe tener entre 6 y 15 d\u00edgitos."
+                    ]
+                }
+            }
+        ],
+        "erroresGlobales": []
+    }
+]
