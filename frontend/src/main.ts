@@ -10,6 +10,7 @@ import { logger } from './utils/logger';
 import 'vue-select/dist/vue-select.css';
 import 'vuetify/styles';
 import '@mdi/font/css/materialdesignicons.css';
+import { VFileUpload } from 'vuetify/labs/VFileUpload'
 
 // Cargar tema desde localStorage antes de crear Vuetify
 const getStoredTheme = (): 'light' | 'dark' => {
@@ -26,7 +27,10 @@ const getStoredTheme = (): 'light' | 'dark' => {
 
 // Configurar Vuetify
 const vuetify = createVuetify({
-    components,
+    components: {
+        components,
+        VFileUpload
+    },
     directives,
     theme: {
         defaultTheme: getStoredTheme(),
@@ -55,6 +59,7 @@ const vuetify = createVuetify({
             },
         },
     },
+    
 });
 
 const app = createApp(App);

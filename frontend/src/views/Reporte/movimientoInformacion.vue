@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AuthenticatedLayout from '@/components/Layouts/AuthenticatedLayout.vue';
-import { onMounted, ref } from 'vue';
-import * as XLSX from 'xlsx';
+import { ref } from 'vue';
+// import * as XLSX from 'xlsx';
 import type { MovimientoInformacion } from '@/types/reportes/MovimientoInformacion';
 import VDataTableCard from '@/components/Table/VDataTableCard.vue';
 import { useVuetifyTable } from '@/composables/useVuetifyTable';
@@ -82,13 +82,13 @@ const toggleColumnVisibility = (key: string) => {
 };
 
 // Lifecycle
-onMounted(async () => {
-    (window as any).XLSX = XLSX;
-    await table.loadItems({
-        page: 1,
-        itemsPerPage: 10,
-    });
-});
+// onMounted(async () => {
+//     (window as any).XLSX = XLSX;
+//     await table.loadItems({
+//         page: 1,
+//         itemsPerPage: 10,
+//     });
+// });
 </script>
 
 <template>

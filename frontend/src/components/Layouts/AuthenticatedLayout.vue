@@ -4,10 +4,11 @@ import { useRoute } from 'vue-router';
 import { useDisplay } from 'vuetify';
 import { useAuthStore } from '../../stores/auth';
 import ApplicationLogo from '../ApplicationLogo.vue';
-import AppSidebar from './Partial/AppSidebar.vue';
-import AppTopbar from './Partial/AppTopbar.vue';
+ 
 import { useMenuPermissions } from '../../composables/useMenuPermissions';
 import { useAuthReady } from '../../composables/useAuthReady';
+import AppTopbar from './AppTopbar.vue';
+import AppSidebar from './AppSidebar.vue';
 
 const route = useRoute();
 const authStore = useAuthStore();

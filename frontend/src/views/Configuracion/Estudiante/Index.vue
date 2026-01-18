@@ -60,7 +60,7 @@ const saveForm = reactive({
     duchas: '',
     urinarios: '',
 });
-
+ 
 // Formularios de padres
 const padreForm = reactive({
     id: null as number | null,
