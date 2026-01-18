@@ -13,17 +13,18 @@ final class ImportacionController extends BaseController
 {
     public function __construct(
         private readonly CentinelaService $centinelaService,
-        private readonly EstudianteModel $estudianteMdel
+        private readonly EstudianteModel $estudianteMdel,
     ) {}
 
     public function validar(ImportacionRequest $request)
     {
         // Si llega aquí, todos los datos cumplen las reglas
-        $datos = $request->validated()['estudiantes'];
+        $datos = $request->validated()["estudiantes"];
 
-        return response()->json([
-            'ok'    => true,
-            'datos' => $datos,
-        ]);
+        return $this->successResponse(
+            message: "Datos validados correctamente",
+            data: $datos,
+            status: 200,
+        );
     }
 }

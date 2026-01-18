@@ -152,8 +152,9 @@ final class ImportacionRequest extends FormRequest
         return [
             "estudiantes.*.apellido_apoderado{$n}"   => ['nullable', 'string', 'max:120'],
             "estudiantes.*.nombre_apoderado{$n}"     => ['nullable', 'string', 'max:120'],
-            "estudiantes.*.dni_apoderado{$n}"        => ['nullable', 'digits_between:8,12'],
-            "estudiantes.*.telefono_apoderado{$n}"   => ['nullable', 'digits_between:6,15'],
+          
+            "estudiantes.*.dni_apoderado{$n}"        => ['nullable', 'digits:8'],
+            "estudiantes.*.telefono_apoderado{$n}"   => ['nullable', 'digits:9'],
             "estudiantes.*.parentesco_apoderado{$n}" => ['nullable', 'string', 'max:30'],
             "estudiantes.*.legalizado_apoderado{$n}" => ['nullable', 'string', 'in:SI,NO'],
         ];
@@ -204,7 +205,6 @@ final class ImportacionRequest extends FormRequest
 
         throw new HttpResponseException(
             response()->json([
-                'ok'              => false,
                 'errores'         => array_values($erroresPorFila),
                 'erroresGlobales' => $erroresGlobales,
             ], 422)
