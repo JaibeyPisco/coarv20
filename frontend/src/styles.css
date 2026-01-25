@@ -1,0 +1,12 @@
+html,
+body,
+#app {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* Vuetify a veces necesita esto para sus wrappers internos */
+.v-application__wrap {
+    min-height: 100dvh !important;
+}
